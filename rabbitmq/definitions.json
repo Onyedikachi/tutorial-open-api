@@ -1,0 +1,108 @@
+{
+  "rabbit_version": "3.12",
+  "exchanges": [
+    {
+      "name": "payment.exchange",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "consent.exchange",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "audit.exchange",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "dlx.exchange",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "payment.processing.queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "dlx.exchange",
+        "x-max-priority": 10,
+        "x-message-ttl": 86400000
+      }
+    },
+    {
+      "name": "consent.management.queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "dlx.exchange"
+      }
+    },
+    {
+      "name": "audit.logging.queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "dead.letter.queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {
+      "source": "payment.exchange",
+      "vhost": "/",
+      "destination": "payment.processing.queue",
+      "destination_type": "queue",
+      "routing_key": "payment.*",
+      "arguments": {}
+    },
+    {
+      "source": "consent.exchange",
+      "vhost": "/",
+      "destination": "consent.management.queue",
+      "destination_type": "queue",
+      "routing_key": "consent.*",
+      "arguments": {}
+    },
+    {
+      "source": "audit.exchange",
+      "vhost": "/",
+      "destination": "audit.logging.queue",
+      "destination_type": "queue",
+      "routing_key": "audit.#",
+      "arguments": {}
+    },
+    {
+      "source": "dlx.exchange",
+      "vhost": "/",
+      "destination": "dead.letter.queue",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {}
+    }
+  ]
+}

@@ -1,0 +1,2231 @@
+openapi: 3.0.0
+
+info:
+  title: Open Banking Account Information API (AIS)
+  description: |
+    # Account Information API
+    This API provides access to account information for authorized Third Party Providers (TPPs).
+    
+    ## Key Features
+    - **Account Discovery**: List accounts with detailed metadata
+    - **Transaction History**: Retrieve transactions with rich filtering
+    - **Balance Information**: Real-time account balances
+    - **Beneficiary Management**: Access payee information
+    - **Direct Debits & Standing Orders**: View recurring payments
+    
+    ## Version Information
+    - Current Version: 3.1.6
+    - UK Open Banking Compliance: Yes
+    - FAPI Compliant: Yes (Read/Write)
+    
+    ## Important Notes
+    - All endpoints require valid OAuth2 tokens with appropriate scopes
+    - Use `x-fapi-interaction-id` for request tracing
+    - Rate limits apply (see documentation)
+    - RFC 7807 error responses for all 4xx/5xx errors
+    
+    ## Support
+    - Developer Portal: [https://developer.bank.com](https://developer.bank.com)
+    - API Status: [https://status.bank.com](https://status.bank.com)
+    - Email: api-support@bank.com
+    
+  version: 3.1.6
+  termsOfService: https://bank.com/api/terms
+  contact:
+    name: Open Banking API Support
+    email: api-support@bank.com
+    url: https://developer.bank.com/support
+  license:
+    name: Open Banking License
+    url: https://www.openbanking.org.uk/terms
+
+servers:
+  - url: https://rs.bank.com/open-banking/v3.1/aisp
+    description: Production Server (TLS 1.3 required)
+  - url: https://matls.rs.bank.com/open-banking/v3.1/aisp
+    description: Production Server with mTLS
+  - url: https://sandbox.bank.com/open-banking/v3.1/aisp
+    description: Sandbox Environment
+  - url: https://rs.bank.com/open-banking/v{version}/aisp
+    description: Versioned endpoint pattern
+    variables:
+      version:
+        enum:
+          - v3.1
+          - v3.0
+          - v2.0
+        default: v3.1
+        description: API version
+
+tags:
+  - name: Accounts
+    description: Account discovery and metadata
+  - name: Balances
+    description: Account balance information
+  - name: Transactions
+    description: Transaction history and details
+  - name: Beneficiaries
+    description: Beneficiary/payee information
+  - name: DirectDebits
+    description: Direct debit mandates
+  - name: StandingOrders
+    description: Standing order configurations
+  - name: Products
+    description: Account product details
+  - name: Offers
+    description: Account offers and promotions
+  - name: Parties
+    description: Account holder information
+  - name: ScheduledPayments
+    description: Future-dated payments
+
+paths:
+  /accounts:
+    get:
+      summary: Get list of accounts
+      description: |
+        Returns a list of accounts that the PSU has authorised the TPP to access.
+        
+        ## Access Scope Requirements
+        - Requires `accounts` scope
+        - Permissions must include `ReadAccountsBasic` or `ReadAccountsDetail`
+        
+        ## Pagination
+        - Default page size: 50
+        - Maximum page size: 200
+        - Use `page` and `limit` query parameters
+      operationId: getAccounts
+      tags:
+        - Accounts
+      parameters:
+        - $ref: '#/components/parameters/x-fapi-interaction-id'
+        - $ref: '#/components/parameters/x-fapi-customer-last-logged-time'
+        - $ref: '#/components/parameters/x-customer-user-agent'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/from-creation-date'
+        - $ref: '#/components/parameters/to-creation-date'
+      responses:
+        '200':
+          description: Successfully retrieved accounts
+          headers:
+            x-fapi-interaction-id:
+              $ref: '#/components/headers/x-fapi-interaction-id'
+            x-pagination-total:
+              schema:
+                type: integer
+                description: Total number of accounts
+            x-pagination-page:
+              schema:
+                type: integer
+                description: Current page number
+            x-pagination-limit:
+              schema:
+                type: integer
+                description: Page size
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+              examples:
+                basic-accounts:
+                  $ref: '#/components/examples/basic-accounts'
+                detailed-accounts:
+                  $ref: '#/components/examples/detailed-accounts'
+        '400':
+          $ref: '#/components/responses/400Error'
+        '401':
+          $ref: '#/components/responses/401Error'
+        '403':
+          $ref: '#/components/responses/403Error'
+        '404':
+          $ref: '#/components/responses/404Error'
+        '405':
+          $ref: '#/components/responses/405Error'
+        '406':
+          $ref: '#/components/responses/406Error'
+        '415':
+          $ref: '#/components/responses/415Error'
+        '429':
+          $ref: '#/components/responses/429Error'
+        '500':
+          $ref: '#/components/responses/500Error'
+      security:
+        - oauth2:
+            - accounts
+
+  /accounts/{AccountId}:
+    get:
+      summary: Get specific account details
+      description: |
+        Returns detailed information for a specific account.
+        
+        ## Access Scope Requirements
+        - Requires `accounts` scope
+        - Permissions must include `ReadAccountsDetail`
+      operationId: getAccountById
+      tags:
+        - Accounts
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+        - $ref: '#/components/parameters/x-fapi-interaction-id'
+        - $ref: '#/components/parameters/x-fapi-customer-last-logged-time'
+        - $ref: '#/components/parameters/x-customer-user-agent'
+      responses:
+        '200':
+          description: Successfully retrieved account details
+          headers:
+            x-fapi-interaction-id:
+              $ref: '#/components/headers/x-fapi-interaction-id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountDetailResponse'
+        '400':
+          $ref: '#/components/responses/400Error'
+        '401':
+          $ref: '#/components/responses/401Error'
+        '403':
+          $ref: '#/components/responses/403Error'
+        '404':
+          $ref: '#/components/responses/404Error'
+        '429':
+          $ref: '#/components/responses/429Error'
+        '500':
+          $ref: '#/components/responses/500Error'
+      security:
+        - oauth2:
+            - accounts
+
+  /accounts/{AccountId}/balances:
+    get:
+      summary: Get account balances
+      description: |
+        Returns current and available balances for a specific account.
+        
+        ## Balance Types
+        - **InterimAvailable**: Available balance for transactions
+        - **InterimBooked**: Confirmed transactions balance
+        - **Expected**: Expected balance including pending items
+        
+        ## Access Scope Requirements
+        - Requires `accounts` scope
+        - Permissions must include `ReadBalances`
+      operationId: getAccountBalances
+      tags:
+        - Balances
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+        - $ref: '#/components/parameters/x-fapi-interaction-id'
+        - $ref: '#/components/parameters/x-fapi-customer-last-logged-time'
+        - $ref: '#/components/parameters/x-customer-user-agent'
+      responses:
+        '200':
+          description: Successfully retrieved balances
+          headers:
+            x-fapi-interaction-id:
+              $ref: '#/components/headers/x-fapi-interaction-id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BalanceResponse'
+              example:
+                Data:
+                  Balance:
+                    - AccountId: "1234567890"
+                      Amount:
+                        Amount: "1500.00"
+                        Currency: "GBP"
+                      CreditDebitIndicator: "Credit"
+                      Type: "InterimAvailable"
+                      DateTime: "2026-03-09T10:30:00Z"
+                    - AccountId: "1234567890"
+                      Amount:
+                        Amount: "1425.50"
+                        Currency: "GBP"
+                      CreditDebitIndicator: "Credit"
+                      Type: "InterimBooked"
+                      DateTime: "2026-03-09T10:30:00Z"
+        '400':
+          $ref: '#/components/responses/400Error'
+        '401':
+          $ref: '#/components/responses/401Error'
+        '403':
+          $ref: '#/components/responses/403Error'
+        '404':
+          $ref: '#/components/responses/404Error'
+        '429':
+          $ref: '#/components/responses/429Error'
+      security:
+        - oauth2:
+            - accounts
+
+  /accounts/{AccountId}/transactions:
+    get:
+      summary: Get account transactions
+      description: |
+        Returns transaction history for a specific account with comprehensive filtering.
+        
+        ## Filtering Options
+        - **Date range**: `fromBookingDate` and `toBookingDate`
+        - **Transaction type**: Credit/Debit filtering
+        - **Amount range**: Minimum/maximum amounts
+        - **Transaction status**: Booked/Pending
+        
+        ## Access Scope Requirements
+        - Requires `accounts` scope
+        - Permissions must include `ReadTransactionsBasic` or `ReadTransactionsDetail`
+        
+        ## Rate Limiting
+        - 100 requests per minute per TPP
+        - Maximum date range: 90 days
+      operationId: getAccountTransactions
+      tags:
+        - Transactions
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+        - $ref: '#/components/parameters/x-fapi-interaction-id'
+        - $ref: '#/components/parameters/x-fapi-customer-last-logged-time'
+        - $ref: '#/components/parameters/x-customer-user-agent'
+        - $ref: '#/components/parameters/from-booking-date'
+        - $ref: '#/components/parameters/to-booking-date'
+        - $ref: '#/components/parameters/from-statement-date'
+        - $ref: '#/components/parameters/to-statement-date'
+        - $ref: '#/components/parameters/from-amount'
+        - $ref: '#/components/parameters/to-amount'
+        - $ref: '#/components/parameters/credit-debit-indicator'
+        - $ref: '#/components/parameters/transaction-status'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: Successfully retrieved transactions
+          headers:
+            x-fapi-interaction-id:
+              $ref: '#/components/headers/x-fapi-interaction-id'
+            x-pagination-total:
+              schema:
+                type: integer
+                description: Total number of transactions
+            x-pagination-page:
+              schema:
+                type: integer
+                description: Current page number
+            x-pagination-limit:
+              schema:
+                type: integer
+                description: Page size
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionResponse'
+              examples:
+                recent-transactions:
+                  $ref: '#/components/examples/recent-transactions'
+                paginated-transactions:
+                  $ref: '#/components/examples/paginated-transactions'
+        '400':
+          $ref: '#/components/responses/400Error'
+        '401':
+          $ref: '#/components/responses/401Error'
+        '403':
+          $ref: '#/components/responses/403Error'
+        '404':
+          $ref: '#/components/responses/404Error'
+        '422':
+          $ref: '#/components/responses/422Error'
+        '429':
+          $ref: '#/components/responses/429Error'
+      security:
+        - oauth2:
+            - accounts
+
+  /accounts/{AccountId}/beneficiaries:
+    get:
+      summary: Get account beneficiaries
+      description: Returns list of beneficiaries/payees for an account
+      operationId: getAccountBeneficiaries
+      tags:
+        - Beneficiaries
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+        - $ref: '#/components/parameters/x-fapi-interaction-id'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: Successfully retrieved beneficiaries
+          headers:
+            x-fapi-interaction-id:
+              $ref: '#/components/headers/x-fapi-interaction-id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BeneficiaryResponse'
+        '400':
+          $ref: '#/components/responses/400Error'
+        '401':
+          $ref: '#/components/responses/401Error'
+        '403':
+          $ref: '#/components/responses/403Error'
+        '404':
+          $ref: '#/components/responses/404Error'
+      security:
+        - oauth2:
+            - accounts
+
+  /accounts/{AccountId}/direct-debits:
+    get:
+      summary: Get direct debit mandates
+      description: Returns active direct debit mandates for an account
+      operationId: getAccountDirectDebits
+      tags:
+        - DirectDebits
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+        - $ref: '#/components/parameters/x-fapi-interaction-id'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: Successfully retrieved direct debits
+          headers:
+            x-fapi-interaction-id:
+              $ref: '#/components/headers/x-fapi-interaction-id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DirectDebitResponse'
+        '400':
+          $ref: '#/components/responses/400Error'
+        '401':
+          $ref: '#/components/responses/401Error'
+        '403':
+          $ref: '#/components/responses/403Error'
+        '404':
+          $ref: '#/components/responses/404Error'
+      security:
+        - oauth2:
+            - accounts
+
+  /accounts/{AccountId}/standing-orders:
+    get:
+      summary: Get standing orders
+      description: Returns active standing orders for an account
+      operationId: getAccountStandingOrders
+      tags:
+        - StandingOrders
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+        - $ref: '#/components/parameters/x-fapi-interaction-id'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: Successfully retrieved standing orders
+          headers:
+            x-fapi-interaction-id:
+              $ref: '#/components/headers/x-fapi-interaction-id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandingOrderResponse'
+        '400':
+          $ref: '#/components/responses/400Error'
+        '401':
+          $ref: '#/components/responses/401Error'
+        '403':
+          $ref: '#/components/responses/403Error'
+        '404':
+          $ref: '#/components/responses/404Error'
+      security:
+        - oauth2:
+            - accounts
+
+  /accounts/{AccountId}/offers:
+    get:
+      summary: Get account offers
+      description: Returns current offers and promotions for an account
+      operationId: getAccountOffers
+      tags:
+        - Offers
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+        - $ref: '#/components/parameters/x-fapi-interaction-id'
+      responses:
+        '200':
+          description: Successfully retrieved offers
+          headers:
+            x-fapi-interaction-id:
+              $ref: '#/components/headers/x-fapi-interaction-id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfferResponse'
+        '400':
+          $ref: '#/components/responses/400Error'
+        '401':
+          $ref: '#/components/responses/401Error'
+        '403':
+          $ref: '#/components/responses/403Error'
+        '404':
+          $ref: '#/components/responses/404Error'
+      security:
+        - oauth2:
+            - accounts
+
+  /accounts/{AccountId}/party:
+    get:
+      summary: Get account party information
+      description: Returns information about the account holder
+      operationId: getAccountParty
+      tags:
+        - Parties
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+        - $ref: '#/components/parameters/x-fapi-interaction-id'
+      responses:
+        '200':
+          description: Successfully retrieved party information
+          headers:
+            x-fapi-interaction-id:
+              $ref: '#/components/headers/x-fapi-interaction-id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartyResponse'
+        '400':
+          $ref: '#/components/responses/400Error'
+        '401':
+          $ref: '#/components/responses/401Error'
+        '403':
+          $ref: '#/components/responses/403Error'
+        '404':
+          $ref: '#/components/responses/404Error'
+      security:
+        - oauth2:
+            - accounts
+
+  /accounts/{AccountId}/scheduled-payments:
+    get:
+      summary: Get scheduled payments
+      description: Returns future-dated scheduled payments for an account
+      operationId: getAccountScheduledPayments
+      tags:
+        - ScheduledPayments
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+        - $ref: '#/components/parameters/x-fapi-interaction-id'
+        - $ref: '#/components/parameters/from-scheduled-date'
+        - $ref: '#/components/parameters/to-scheduled-date'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: Successfully retrieved scheduled payments
+          headers:
+            x-fapi-interaction-id:
+              $ref: '#/components/headers/x-fapi-interaction-id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduledPaymentResponse'
+        '400':
+          $ref: '#/components/responses/400Error'
+        '401':
+          $ref: '#/components/responses/401Error'
+        '403':
+          $ref: '#/components/responses/403Error'
+        '404':
+          $ref: '#/components/responses/404Error'
+      security:
+        - oauth2:
+            - accounts
+
+  /accounts/{AccountId}/product:
+    get:
+      summary: Get account product details
+      description: Returns product information associated with the account
+      operationId: getAccountProduct
+      tags:
+        - Products
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+        - $ref: '#/components/parameters/x-fapi-interaction-id'
+      responses:
+        '200':
+          description: Successfully retrieved product details
+          headers:
+            x-fapi-interaction-id:
+              $ref: '#/components/headers/x-fapi-interaction-id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '400':
+          $ref: '#/components/responses/400Error'
+        '401':
+          $ref: '#/components/responses/401Error'
+        '403':
+          $ref: '#/components/responses/403Error'
+        '404':
+          $ref: '#/components/responses/404Error'
+      security:
+        - oauth2:
+            - accounts
+
+  /balances:
+    get:
+      summary: Get bulk balances
+      description: Returns balances for multiple accounts in a single request
+      operationId: getBulkBalances
+      tags:
+        - Balances
+      parameters:
+        - $ref: '#/components/parameters/x-fapi-interaction-id'
+        - $ref: '#/components/parameters/account-ids'
+        - $ref: '#/components/parameters/balance-types'
+      responses:
+        '200':
+          description: Successfully retrieved bulk balances
+          headers:
+            x-fapi-interaction-id:
+              $ref: '#/components/headers/x-fapi-interaction-id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkBalanceResponse'
+        '400':
+          $ref: '#/components/responses/400Error'
+        '401':
+          $ref: '#/components/responses/401Error'
+        '403':
+          $ref: '#/components/responses/403Error'
+      security:
+        - oauth2:
+            - accounts
+
+components:
+  schemas:
+    # Account Schemas
+    AccountResponse:
+      type: object
+      required:
+        - Data
+      properties:
+        Data:
+          type: object
+          required:
+            - Account
+          properties:
+            Account:
+              type: array
+              items:
+                $ref: '#/components/schemas/Account'
+        Links:
+          $ref: '#/components/schemas/Links'
+        Meta:
+          $ref: '#/components/schemas/Meta'
+
+    Account:
+      type: object
+      required:
+        - AccountId
+        - Currency
+        - AccountType
+        - AccountSubType
+      properties:
+        AccountId:
+          type: string
+          minLength: 1
+          maxLength: 40
+          description: Unique identifier for the account
+          example: "1234567890"
+        Currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+          description: ISO 4217 currency code
+          example: "GBP"
+        AccountType:
+          type: string
+          enum:
+            - Business
+            - Personal
+            - Joint
+          description: Type of account
+        AccountSubType:
+          type: string
+          enum:
+            - CurrentAccount
+            - SavingsAccount
+            - CreditCard
+            - Loan
+            - Mortgage
+          description: Sub-type of account
+        Description:
+          type: string
+          maxLength: 35
+          description: Description of the account
+          example: "Mr John Smith Personal Account"
+        Nickname:
+          type: string
+          maxLength: 70
+          description: Nickname given by account holder
+          example: "Main spending"
+        Account:
+          type: array
+          description: Account identification details
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/AccountIdentification'
+        Servicer:
+          $ref: '#/components/schemas/Servicer'
+
+    AccountDetailResponse:
+      type: object
+      required:
+        - Data
+      properties:
+        Data:
+          type: object
+          required:
+            - Account
+          properties:
+            Account:
+              type: array
+              items:
+                $ref: '#/components/schemas/AccountDetail'
+
+    AccountDetail:
+      allOf:
+        - $ref: '#/components/schemas/Account'
+        - type: object
+          properties:
+            Status:
+              type: string
+              enum:
+                - Enabled
+                - Disabled
+                - Deleted
+              description: Account status
+            StatusUpdateDateTime:
+              type: string
+              format: date-time
+              description: Last status update timestamp
+            OpeningDate:
+              type: string
+              format: date
+              description: Date account was opened
+            MaturityDate:
+              type: string
+              format: date
+              description: Maturity date for term accounts
+            SwitchStatus:
+              type: string
+              enum:
+                - None
+                - Incoming
+                - Outgoing
+              description: Account switching service status
+
+    AccountIdentification:
+      type: object
+      required:
+        - SchemeName
+        - Identification
+      properties:
+        SchemeName:
+          type: string
+          enum:
+            - UK.OBIE.SortCodeAccountNumber
+            - UK.OBIE.IBAN
+            - UK.OBIE.PAN
+            - UK.OBIE.MaskedPAN
+            - UK.OBIE.BBAN
+            - UK.OBIE.Paym
+          description: Account identification scheme
+        Identification:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: Account identifier (format depends on SchemeName)
+          example: "12345678901234"
+        Name:
+          type: string
+          maxLength: 70
+          description: Name of the account holder
+          example: "Mr John Smith"
+        SecondaryIdentification:
+          type: string
+          maxLength: 34
+          description: Secondary identification (e.g., roll number)
+          example: "Roll12345"
+
+    Servicer:
+      type: object
+      required:
+        - SchemeName
+        - Identification
+      properties:
+        SchemeName:
+          type: string
+          enum:
+            - UK.OBIE.BICFI
+            - UK.OBIE.BankCode
+          description: Servicer identification scheme
+        Identification:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: Servicer identifier
+          example: "MIDLGB22"
+
+    # Balance Schemas
+    BalanceResponse:
+      type: object
+      required:
+        - Data
+      properties:
+        Data:
+          type: object
+          required:
+            - Balance
+          properties:
+            Balance:
+              type: array
+              items:
+                $ref: '#/components/schemas/Balance'
+
+    Balance:
+      type: object
+      required:
+        - AccountId
+        - Amount
+        - CreditDebitIndicator
+        - Type
+        - DateTime
+      properties:
+        AccountId:
+          type: string
+          minLength: 1
+          maxLength: 40
+          description: Account identifier
+          example: "1234567890"
+        Amount:
+          $ref: '#/components/schemas/Amount'
+        CreditDebitIndicator:
+          type: string
+          enum:
+            - Credit
+            - Debit
+          description: Indicates if balance is credit or debit
+        Type:
+          type: string
+          enum:
+            - ClosingAvailable
+            - ClosingBooked
+            - Expected
+            - ForwardAvailable
+            - Information
+            - InterimAvailable
+            - InterimBooked
+            - OpeningAvailable
+            - OpeningBooked
+            - PreviouslyClosedBooked
+          description: Type of balance
+        DateTime:
+          type: string
+          format: date-time
+          description: Date and time of the balance
+        CreditLine:
+          type: array
+          description: Credit line information
+          items:
+            $ref: '#/components/schemas/CreditLine'
+
+    Amount:
+      type: object
+      required:
+        - Amount
+        - Currency
+      properties:
+        Amount:
+          type: string
+          pattern: '^-?\d{1,13}\.\d{2}$'
+          description: Monetary value with 2 decimal places
+          example: "1250.75"
+        Currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+          description: ISO 4217 currency code
+          example: "GBP"
+
+    CreditLine:
+      type: object
+      required:
+        - Included
+      properties:
+        Included:
+          type: boolean
+          description: Whether the credit line is included in balance
+        Amount:
+          $ref: '#/components/schemas/Amount'
+        Type:
+          type: string
+          enum:
+            - Available
+            - Credit
+            - Emergency
+            - Pre-Agreed
+            - Temporary
+          description: Type of credit line
+
+    # Transaction Schemas
+    TransactionResponse:
+      type: object
+      required:
+        - Data
+      properties:
+        Data:
+          type: object
+          required:
+            - Transaction
+          properties:
+            Transaction:
+              type: array
+              items:
+                $ref: '#/components/schemas/Transaction'
+        Links:
+          $ref: '#/components/schemas/Links'
+        Meta:
+          $ref: '#/components/schemas/Meta'
+
+    Transaction:
+      type: object
+      required:
+        - AccountId
+        - TransactionId
+        - Amount
+        - CreditDebitIndicator
+        - Status
+        - BookingDateTime
+      properties:
+        AccountId:
+          type: string
+          minLength: 1
+          maxLength: 40
+          description: Account identifier
+        TransactionId:
+          type: string
+          minLength: 1
+          maxLength: 40
+          description: Unique transaction identifier
+          example: "TX20260309123456"
+        TransactionReference:
+          type: string
+          maxLength: 35
+          description: Reference provided by the creditor
+          example: "PAYMENT-123456"
+        Amount:
+          $ref: '#/components/schemas/Amount'
+        CreditDebitIndicator:
+          type: string
+          enum:
+            - Credit
+            - Debit
+        Status:
+          type: string
+          enum:
+            - Booked
+            - Pending
+            - Rejected
+        BookingDateTime:
+          type: string
+          format: date-time
+          description: Date and time when transaction was booked
+        ValueDateTime:
+          type: string
+          format: date-time
+          description: Value date for interest calculation
+        TransactionInformation:
+          type: string
+          maxLength: 500
+          description: Description of the transaction
+          example: "TESCO STORE 123 LONDON"
+        AddressLine:
+          type: string
+          maxLength: 70
+          description: Address line for the transaction
+        BankTransactionCode:
+          $ref: '#/components/schemas/BankTransactionCode'
+        ProprietaryBankTransactionCode:
+          $ref: '#/components/schemas/ProprietaryBankTransactionCode'
+        Balance:
+          $ref: '#/components/schemas/TransactionBalance'
+        MerchantDetails:
+          $ref: '#/components/schemas/MerchantDetails'
+        CreditorAgent:
+          $ref: '#/components/schemas/CreditorAgent'
+        CreditorAccount:
+          $ref: '#/components/schemas/AccountIdentification'
+        DebtorAgent:
+          $ref: '#/components/schemas/DebtorAgent'
+        DebtorAccount:
+          $ref: '#/components/schemas/AccountIdentification'
+        SupplementaryData:
+          type: object
+          description: Additional transaction data
+
+    BankTransactionCode:
+      type: object
+      properties:
+        Code:
+          type: string
+          description: ISO 20022 bank transaction code
+          example: "PMNT"
+        SubCode:
+          type: string
+          description: ISO 20022 bank transaction sub-code
+          example: "ICDT"
+
+    ProprietaryBankTransactionCode:
+      type: object
+      properties:
+        Code:
+          type: string
+          description: Bank proprietary transaction code
+          example: "POS"
+        Issuer:
+          type: string
+          description: Issuer of the proprietary code
+          example: "BANK"
+
+    TransactionBalance:
+      type: object
+      properties:
+        Amount:
+          $ref: '#/components/schemas/Amount'
+        CreditDebitIndicator:
+          type: string
+          enum:
+            - Credit
+            - Debit
+        Type:
+          type: string
+          enum:
+            - InterimBooked
+            - InterimAvailable
+          description: Balance type after transaction
+
+    MerchantDetails:
+      type: object
+      properties:
+        MerchantName:
+          type: string
+          maxLength: 350
+          example: "Tesco"
+        MerchantCategoryCode:
+          type: string
+          pattern: '^\d{4}$'
+          description: MCC code
+          example: "5411"
+
+    CreditorAgent:
+      type: object
+      properties:
+        SchemeName:
+          type: string
+          enum:
+            - UK.OBIE.BICFI
+        Identification:
+          type: string
+          example: "MIDLGB22"
+        Name:
+          type: string
+          maxLength: 140
+          example: "HSBC UK"
+
+    DebtorAgent:
+      type: object
+      properties:
+        SchemeName:
+          type: string
+          enum:
+            - UK.OBIE.BICFI
+        Identification:
+          type: string
+          example: "BARCGB22"
+        Name:
+          type: string
+          maxLength: 140
+
+    # Beneficiary Schemas
+    BeneficiaryResponse:
+      type: object
+      required:
+        - Data
+      properties:
+        Data:
+          type: object
+          required:
+            - Beneficiary
+          properties:
+            Beneficiary:
+              type: array
+              items:
+                $ref: '#/components/schemas/Beneficiary'
+
+    Beneficiary:
+      type: object
+      required:
+        - AccountId
+        - BeneficiaryId
+        - Reference
+        - CreditorAccount
+      properties:
+        BeneficiaryId:
+          type: string
+          minLength: 1
+          maxLength: 40
+          description: Unique beneficiary identifier
+          example: "BEN1234567890"
+        AccountId:
+          type: string
+          minLength: 1
+          maxLength: 40
+          description: Account identifier
+        Reference:
+          type: string
+          maxLength: 35
+          description: Reference for payments to this beneficiary
+          example: "MONTHLY RENT"
+        CreditorAgent:
+          $ref: '#/components/schemas/CreditorAgent'
+        CreditorAccount:
+          $ref: '#/components/schemas/AccountIdentification'
+
+    # Direct Debit Schemas
+    DirectDebitResponse:
+      type: object
+      required:
+        - Data
+      properties:
+        Data:
+          type: object
+          required:
+            - DirectDebit
+          properties:
+            DirectDebit:
+              type: array
+              items:
+                $ref: '#/components/schemas/DirectDebit'
+
+    DirectDebit:
+      type: object
+      required:
+        - AccountId
+        - DirectDebitId
+        - MandateIdentification
+        - Name
+      properties:
+        DirectDebitId:
+          type: string
+          minLength: 1
+          maxLength: 40
+          description: Unique direct debit identifier
+        AccountId:
+          type: string
+          minLength: 1
+          maxLength: 40
+        MandateIdentification:
+          type: string
+          maxLength: 35
+          description: Direct debit mandate reference
+          example: "DD12345678"
+        Name:
+          type: string
+          maxLength: 70
+          description: Name of the originator
+          example: "British Gas"
+        PreviousPaymentAmount:
+          $ref: '#/components/schemas/Amount'
+        PreviousPaymentDateTime:
+          type: string
+          format: date-time
+        NextPaymentAmount:
+          $ref: '#/components/schemas/Amount'
+        NextPaymentDateTime:
+          type: string
+          format: date-time
+        Frequency:
+          type: string
+          enum:
+            - Daily
+            - Weekly
+            - Fortnightly
+            - Monthly
+            - Quarterly
+            - HalfYearly
+            - Annually
+        Status:
+          type: string
+          enum:
+            - Active
+            - Inactive
+            - Cancelled
+
+    # Standing Order Schemas
+    StandingOrderResponse:
+      type: object
+      required:
+        - Data
+      properties:
+        Data:
+          type: object
+          required:
+            - StandingOrder
+          properties:
+            StandingOrder:
+              type: array
+              items:
+                $ref: '#/components/schemas/StandingOrder'
+
+    StandingOrder:
+      type: object
+      required:
+        - AccountId
+        - StandingOrderId
+        - Frequency
+        - Reference
+        - FirstPaymentAmount
+        - NextPaymentAmount
+        - CreditorAccount
+      properties:
+        StandingOrderId:
+          type: string
+          minLength: 1
+          maxLength: 40
+          description: Unique standing order identifier
+        AccountId:
+          type: string
+          minLength: 1
+          maxLength: 40
+        Frequency:
+          type: string
+          description: Frequency in ISO 20022 format
+          example: "Uporzcd"
+        Reference:
+          type: string
+          maxLength: 35
+          description: Payment reference
+          example: "SAVINGS TRANSFER"
+        FirstPaymentDateTime:
+          type: string
+          format: date-time
+        FirstPaymentAmount:
+          $ref: '#/components/schemas/Amount'
+        NextPaymentDateTime:
+          type: string
+          format: date-time
+        NextPaymentAmount:
+          $ref: '#/components/schemas/Amount'
+        FinalPaymentDateTime:
+          type: string
+          format: date-time
+        FinalPaymentAmount:
+          $ref: '#/components/schemas/Amount'
+        CreditorAgent:
+          $ref: '#/components/schemas/CreditorAgent'
+        CreditorAccount:
+          $ref: '#/components/schemas/AccountIdentification'
+        SupplementaryData:
+          type: object
+
+    # Party Schemas
+    PartyResponse:
+      type: object
+      required:
+        - Data
+      properties:
+        Data:
+          type: object
+          required:
+            - Party
+          properties:
+            Party:
+              $ref: '#/components/schemas/Party'
+
+    Party:
+      type: object
+      required:
+        - PartyId
+        - Name
+      properties:
+        PartyId:
+          type: string
+          minLength: 1
+          maxLength: 40
+          description: Unique party identifier
+        PartyNumber:
+          type: string
+          maxLength: 35
+          description: Customer number
+        PartyType:
+          type: string
+          enum:
+            - Delegate
+            - Joint
+            - Sole
+          description: Type of party relationship
+        Name:
+          type: string
+          maxLength: 350
+          description: Full name of the party
+          example: "Mr John Smith"
+        EmailAddress:
+          type: string
+          format: email
+          maxLength: 256
+          description: Email address
+        Phone:
+          type: string
+          maxLength: 35
+          description: Phone number
+        Mobile:
+          type: string
+          maxLength: 35
+          description: Mobile number
+        Address:
+          type: array
+          items:
+            $ref: '#/components/schemas/PostalAddress'
+
+    PostalAddress:
+      type: object
+      properties:
+        AddressType:
+          type: string
+          enum:
+            - Business
+            - Correspondence
+            - DeliveryTo
+            - MailTo
+            - POBox
+            - Postal
+            - Residential
+        AddressLine:
+          type: array
+          maxItems: 7
+          items:
+            type: string
+            maxLength: 70
+        StreetName:
+          type: string
+          maxLength: 70
+        BuildingNumber:
+          type: string
+          maxLength: 16
+        PostCode:
+          type: string
+          maxLength: 16
+        TownName:
+          type: string
+          maxLength: 35
+        CountrySubDivision:
+          type: string
+          maxLength: 35
+        Country:
+          type: string
+          pattern: '^[A-Z]{2}$'
+          description: ISO 3166-1 alpha-2 country code
+
+    # Product Schemas
+    ProductResponse:
+      type: object
+      required:
+        - Data
+      properties:
+        Data:
+          type: object
+          required:
+            - Product
+          properties:
+            Product:
+              $ref: '#/components/schemas/Product'
+
+    Product:
+      type: object
+      required:
+        - ProductName
+        - ProductType
+      properties:
+        ProductName:
+          type: string
+          maxLength: 350
+          description: Name of the product
+          example: "Premier Current Account"
+        ProductType:
+          type: string
+          enum:
+            - BusinessCurrentAccount
+            - CommercialCreditCard
+            - Other
+            - PersonalCurrentAccount
+            - SMELoan
+        ProductId:
+          type: string
+          maxLength: 40
+          description: Internal product identifier
+        SecondaryProductId:
+          type: string
+          maxLength: 70
+        Description:
+          type: string
+          maxLength: 350
+        InterestRate:
+          type: string
+          pattern: '^\d{1,3}(\.\d{1,3})?$'
+          description: Interest rate percentage
+        InterestRateType:
+          type: string
+          enum:
+            - Fixed
+            - Variable
+        TierBandSet:
+          type: array
+          items:
+            $ref: '#/components/schemas/TierBandSet'
+
+    TierBandSet:
+      type: object
+      properties:
+        TierBandMethod:
+          type: string
+          enum:
+            - Tiered
+            - Whole
+        CalculationMethod:
+          type: string
+          enum:
+            - Compound
+            - Simple
+        Notes:
+          type: array
+          items:
+            type: string
+        TierBand:
+          type: array
+          items:
+            $ref: '#/components/schemas/TierBand'
+
+    TierBand:
+      type: object
+      properties:
+        Identification:
+          type: string
+        TierValueMinimum:
+          type: string
+          pattern: '^\d{1,13}\.\d{2}$'
+        TierValueMaximum:
+          type: string
+          pattern: '^\d{1,13}\.\d{2}$'
+        AER:
+          type: string
+          pattern: '^\d{1,3}(\.\d{1,3})?$'
+        InterestRate:
+          type: string
+          pattern: '^\d{1,3}(\.\d{1,3})?$'
+
+    # Scheduled Payment Schemas
+    ScheduledPaymentResponse:
+      type: object
+      required:
+        - Data
+      properties:
+        Data:
+          type: object
+          required:
+            - ScheduledPayment
+          properties:
+            ScheduledPayment:
+              type: array
+              items:
+                $ref: '#/components/schemas/ScheduledPayment'
+
+    ScheduledPayment:
+      type: object
+      required:
+        - AccountId
+        - ScheduledPaymentId
+        - ScheduledType
+        - ScheduledDateTime
+        - Reference
+        - InstructedAmount
+        - CreditorAccount
+      properties:
+        ScheduledPaymentId:
+          type: string
+          minLength: 1
+          maxLength: 40
+        AccountId:
+          type: string
+          minLength: 1
+          maxLength: 40
+        ScheduledType:
+          type: string
+          enum:
+            - Execution
+            - Settlement
+        ScheduledDateTime:
+          type: string
+          format: date-time
+        Reference:
+          type: string
+          maxLength: 35
+        InstructedAmount:
+          $ref: '#/components/schemas/Amount'
+        CreditorAgent:
+          $ref: '#/components/schemas/CreditorAgent'
+        CreditorAccount:
+          $ref: '#/components/schemas/AccountIdentification'
+
+    # Offer Schemas
+    OfferResponse:
+      type: object
+      required:
+        - Data
+      properties:
+        Data:
+          type: object
+          required:
+            - Offer
+          properties:
+            Offer:
+              type: array
+              items:
+                $ref: '#/components/schemas/Offer'
+
+    Offer:
+      type: object
+      required:
+        - AccountId
+        - OfferId
+        - OfferType
+        - Description
+      properties:
+        OfferId:
+          type: string
+          minLength: 1
+          maxLength: 40
+        AccountId:
+          type: string
+          minLength: 1
+          maxLength: 40
+        OfferType:
+          type: string
+          enum:
+            - BalanceTransfer
+            - LimitIncrease
+            - MoneyTransfer
+            - Other
+            - PromotionalRate
+        Description:
+          type: string
+          maxLength: 500
+        StartDateTime:
+          type: string
+          format: date-time
+        EndDateTime:
+          type: string
+          format: date-time
+        Amount:
+          $ref: '#/components/schemas/Amount'
+        Fee:
+          $ref: '#/components/schemas/Amount'
+        Rate:
+          type: string
+          pattern: '^\d{1,3}(\.\d{1,3})?$'
+        Term:
+          type: string
+        URL:
+          type: string
+          format: uri
+
+    # Bulk Balance Response
+    BulkBalanceResponse:
+      type: object
+      required:
+        - Data
+      properties:
+        Data:
+          type: object
+          required:
+            - Balance
+          properties:
+            Balance:
+              type: array
+              items:
+                $ref: '#/components/schemas/Balance'
+
+    # Common Schemas
+    Links:
+      type: object
+      properties:
+        Self:
+          type: string
+          format: uri
+          description: Link to current resource
+        First:
+          type: string
+          format: uri
+          description: Link to first page
+        Prev:
+          type: string
+          format: uri
+          description: Link to previous page
+        Next:
+          type: string
+          format: uri
+          description: Link to next page
+        Last:
+          type: string
+          format: uri
+          description: Link to last page
+
+    Meta:
+      type: object
+      properties:
+        TotalPages:
+          type: integer
+          description: Total number of pages
+        TotalRecords:
+          type: integer
+          description: Total number of records
+        FirstAvailableDateTime:
+          type: string
+          format: date-time
+          description: Earliest available data
+        LastAvailableDateTime:
+          type: string
+          format: date-time
+          description: Latest available data
+
+    # Error Schemas (RFC 7807)
+    ErrorResponse:
+      type: object
+      required:
+        - type
+        - title
+        - status
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI identifying error type
+          example: "https://openbanking.org.uk/errors/insufficient-funds"
+        title:
+          type: string
+          description: Short error title
+          example: "Insufficient Funds"
+        status:
+          type: integer
+          description: HTTP status code
+          example: 422
+        detail:
+          type: string
+          description: Human-readable explanation
+          example: "Account 12345678 has insufficient balance"
+        instance:
+          type: string
+          format: uri
+          description: Specific error occurrence
+          example: "urn:uuid:123e4567-e89b-12d3-a456-426614174000"
+        # Open Banking extensions
+        ob_error_code:
+          type: string
+          description: UK Open Banking specific error code
+          example: "UK.OBIE.Field.Invalid"
+        ob_error_path:
+          type: array
+          items:
+            type: string
+          description: Path to field causing error
+          example: ["payment.amount"]
+        validation_errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                example: "transaction.amount"
+              error:
+                type: string
+                example: "exceeds_daily_limit"
+              rejected_value:
+                type: string
+                example: "10000.00"
+
+  parameters:
+    AccountId:
+      name: AccountId
+      in: path
+      required: true
+      description: Account identifier
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 40
+        pattern: '^[A-Za-z0-9\-_]+$'
+      example: "1234567890"
+
+    x-fapi-interaction-id:
+      name: x-fapi-interaction-id
+      in: header
+      required: false
+      description: RFC4122 UID for request tracing
+      schema:
+        type: string
+        format: uuid
+        pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+      example: "c7c8b9a0-1a2b-3c4d-5e6f-7a8b9c0d1e2f"
+
+    x-fapi-customer-last-logged-time:
+      name: x-fapi-customer-last-logged-time
+      in: header
+      required: false
+      description: Customer's last login time
+      schema:
+        type: string
+        format: date-time
+        example: "2026-03-09T09:30:00Z"
+
+    x-customer-user-agent:
+      name: x-customer-user-agent
+      in: header
+      required: false
+      description: PSU's user agent string
+      schema:
+        type: string
+        maxLength: 500
+
+    page:
+      name: page
+      in: query
+      required: false
+      description: Page number (1-indexed)
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+        example: 1
+
+    limit:
+      name: limit
+      in: query
+      required: false
+      description: Page size
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+        example: 50
+
+    from-creation-date:
+      name: fromCreationDate
+      in: query
+      required: false
+      description: Filter accounts created after this date
+      schema:
+        type: string
+        format: date-time
+        example: "2026-01-01T00:00:00Z"
+
+    to-creation-date:
+      name: toCreationDate
+      in: query
+      required: false
+      description: Filter accounts created before this date
+      schema:
+        type: string
+        format: date-time
+
+    from-booking-date:
+      name: fromBookingDate
+      in: query
+      required: false
+      description: Filter transactions booked after this date
+      schema:
+        type: string
+        format: date-time
+        example: "2026-03-01T00:00:00Z"
+
+    to-booking-date:
+      name: toBookingDate
+      in: query
+      required: false
+      description: Filter transactions booked before this date
+      schema:
+        type: string
+        format: date-time
+        example: "2026-03-09T23:59:59Z"
+
+    from-statement-date:
+      name: fromStatementDate
+      in: query
+      required: false
+      description: Filter transactions on statements after this date
+      schema:
+        type: string
+        format: date
+
+    to-statement-date:
+      name: toStatementDate
+      in: query
+      required: false
+      description: Filter transactions on statements before this date
+      schema:
+        type: string
+        format: date
+
+    from-amount:
+      name: fromAmount
+      in: query
+      required: false
+      description: Minimum transaction amount
+      schema:
+        type: number
+        minimum: 0
+        example: 10.00
+
+    to-amount:
+      name: toAmount
+      in: query
+      required: false
+      description: Maximum transaction amount
+      schema:
+        type: number
+        minimum: 0
+        example: 1000.00
+
+    credit-debit-indicator:
+      name: creditDebitIndicator
+      in: query
+      required: false
+      description: Filter by transaction type
+      schema:
+        type: string
+        enum:
+          - Credit
+          - Debit
+        example: "Credit"
+
+    transaction-status:
+      name: status
+      in: query
+      required: false
+      description: Filter by transaction status
+      schema:
+        type: string
+        enum:
+          - Booked
+          - Pending
+        example: "Booked"
+
+    from-scheduled-date:
+      name: fromScheduledDate
+      in: query
+      required: false
+      description: Filter scheduled payments after this date
+      schema:
+        type: string
+        format: date-time
+
+    to-scheduled-date:
+      name: toScheduledDate
+      in: query
+      required: false
+      description: Filter scheduled payments before this date
+      schema:
+        type: string
+        format: date-time
+
+    account-ids:
+      name: accountIds
+      in: query
+      required: false
+      description: Comma-separated list of account IDs
+      schema:
+        type: array
+        items:
+          type: string
+        maxItems: 10
+        style: form
+        explode: false
+      example: "1234567890,0987654321"
+
+    balance-types:
+      name: balanceTypes
+      in: query
+      required: false
+      description: Comma-separated list of balance types
+      schema:
+        type: array
+        items:
+          type: string
+          enum:
+            - ClosingAvailable
+            - ClosingBooked
+            - InterimAvailable
+            - InterimBooked
+        style: form
+        explode: false
+
+  headers:
+    x-fapi-interaction-id:
+      description: Echoed interaction ID
+      schema:
+        type: string
+        format: uuid
+      example: "c7c8b9a0-1a2b-3c4d-5e6f-7a8b9c0d1e2f"
+
+    Location:
+      description: Resource URL
+      schema:
+        type: string
+        format: uri
+
+    Sunset:
+      description: Deprecation date (RFC 8594)
+      schema:
+        type: string
+        format: date-time
+        example: "Sat, 31 Dec 2026 23:59:59 GMT"
+
+  responses:
+    # Error responses (RFC 7807)
+    400Error:
+      description: Bad Request - Malformed syntax
+      headers:
+        x-fapi-interaction-id:
+          $ref: '#/components/headers/x-fapi-interaction-id'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            type: "https://openbanking.org.uk/errors/invalid-request"
+            title: "Invalid Request"
+            status: 400
+            detail: "Request body contains invalid JSON"
+            instance: "urn:uuid:c7c8b9a0-1a2b-3c4d-5e6f-7a8b9c0d1e2f"
+
+    401Error:
+      description: Unauthorized - Invalid or missing credentials
+      headers:
+        WWW-Authenticate:
+          schema:
+            type: string
+          description: Authentication challenge
+        x-fapi-interaction-id:
+          $ref: '#/components/headers/x-fapi-interaction-id'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            type: "https://openbanking.org.uk/errors/unauthorised"
+            title: "Unauthorized"
+            status: 401
+            detail: "Access token is missing or invalid"
+            instance: "urn:uuid:c7c8b9a0-1a2b-3c4d-5e6f-7a8b9c0d1e2f"
+
+    403Error:
+      description: Forbidden - Insufficient permissions
+      headers:
+        x-fapi-interaction-id:
+          $ref: '#/components/headers/x-fapi-interaction-id'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            type: "https://openbanking.org.uk/errors/forbidden"
+            title: "Forbidden"
+            status: 403
+            detail: "Token does not have required scopes"
+            instance: "urn:uuid:c7c8b9a0-1a2b-3c4d-5e6f-7a8b9c0d1e2f"
+
+    404Error:
+      description: Not Found - Resource doesn't exist
+      headers:
+        x-fapi-interaction-id:
+          $ref: '#/components/headers/x-fapi-interaction-id'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            type: "https://openbanking.org.uk/errors/not-found"
+            title: "Not Found"
+            status: 404
+            detail: "Account not found"
+            instance: "urn:uuid:c7c8b9a0-1a2b-3c4d-5e6f-7a8b9c0d1e2f"
+
+    405Error:
+      description: Method Not Allowed
+      headers:
+        Allow:
+          schema:
+            type: string
+          description: Allowed methods
+        x-fapi-interaction-id:
+          $ref: '#/components/headers/x-fapi-interaction-id'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    406Error:
+      description: Not Acceptable - Unsupported Accept header
+      headers:
+        x-fapi-interaction-id:
+          $ref: '#/components/headers/x-fapi-interaction-id'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    415Error:
+      description: Unsupported Media Type
+      headers:
+        Accept-Post:
+          schema:
+            type: string
+          description: Supported media types
+        x-fapi-interaction-id:
+          $ref: '#/components/headers/x-fapi-interaction-id'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    422Error:
+      description: Unprocessable Entity - Business validation failed
+      headers:
+        x-fapi-interaction-id:
+          $ref: '#/components/headers/x-fapi-interaction-id'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            type: "https://openbanking.org.uk/errors/unprocessable-entity"
+            title: "Unprocessable Entity"
+            status: 422
+            detail: "Request failed business validation"
+            instance: "urn:uuid:c7c8b9a0-1a2b-3c4d-5e6f-7a8b9c0d1e2f"
+            validation_errors:
+              - field: "fromBookingDate"
+                error: "invalid_date_range"
+                detail: "Date range cannot exceed 90 days"
+
+    429Error:
+      description: Too Many Requests - Rate limit exceeded
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: Seconds to wait before retrying
+        x-fapi-interaction-id:
+          $ref: '#/components/headers/x-fapi-interaction-id'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            type: "https://openbanking.org.uk/errors/rate-limit-exceeded"
+            title: "Rate Limit Exceeded"
+            status: 429
+            detail: "Too many requests. Please retry after 60 seconds"
+            instance: "urn:uuid:c7c8b9a0-1a2b-3c4d-5e6f-7a8b9c0d1e2f"
+
+    500Error:
+      description: Internal Server Error
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: Suggested retry delay
+        x-fapi-interaction-id:
+          $ref: '#/components/headers/x-fapi-interaction-id'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            type: "https://openbanking.org.uk/errors/internal-server-error"
+            title: "Internal Server Error"
+            status: 500
+            detail: "An unexpected error occurred. Please try again later"
+            instance: "urn:uuid:c7c8b9a0-1a2b-3c4d-5e6f-7a8b9c0d1e2f"
+
+  securitySchemes:
+    oauth2:
+      type: oauth2
+      description: OAuth2 Authorization Code Flow with PKCE (FAPI compliant)
+      flows:
+        authorizationCode:
+          authorizationUrl: https://auth.bank.com/authorize
+          tokenUrl: https://auth.bank.com/token
+          refreshUrl: https://auth.bank.com/refresh
+          scopes:
+            accounts: Access account information
+            openid: OpenID Connect scope
+            profile: Basic profile information
+
+    mutualTLS:
+      type: mutualTLS
+      description: Mutual TLS authentication with eIDAS certificates
+
+    openIdConnect:
+      type: openIdConnect
+      openIdConnectUrl: https://auth.bank.com/.well-known/openid-configuration
+
+  examples:
+    basic-accounts:
+      summary: Basic account information
+      value:
+        Data:
+          Account:
+            - AccountId: "1234567890"
+              Currency: "GBP"
+              AccountType: "Personal"
+              AccountSubType: "CurrentAccount"
+              Description: "Mr John Smith Personal Account"
+              Account:
+                - SchemeName: "UK.OBIE.SortCodeAccountNumber"
+                  Identification: "12345678901234"
+                  Name: "Mr John Smith"
+        Links:
+          Self: "https://api.bank.com/open-banking/v3.1/aisp/accounts"
+        Meta:
+          TotalPages: 1
+          TotalRecords: 1
+
+    detailed-accounts:
+      summary: Detailed account information
+      value:
+        Data:
+          Account:
+            - AccountId: "1234567890"
+              Currency: "GBP"
+              AccountType: "Personal"
+              AccountSubType: "CurrentAccount"
+              Description: "Mr John Smith Personal Account"
+              Nickname: "Main Account"
+              Account:
+                - SchemeName: "UK.OBIE.SortCodeAccountNumber"
+                  Identification: "12345678901234"
+                  Name: "Mr John Smith"
+              Servicer:
+                SchemeName: "UK.OBIE.BICFI"
+                Identification: "MIDLGB22"
+              Status: "Enabled"
+              StatusUpdateDateTime: "2026-01-01T00:00:00Z"
+              OpeningDate: "2020-01-15"
+        Links:
+          Self: "https://api.bank.com/open-banking/v3.1/aisp/accounts"
+        Meta:
+          TotalPages: 1
+          TotalRecords: 1
+
+    recent-transactions:
+      summary: Recent transactions
+      value:
+        Data:
+          Transaction:
+            - AccountId: "1234567890"
+              TransactionId: "TX20260309123456"
+              TransactionReference: "PAYMENT-123456"
+              Amount:
+                Amount: "45.67"
+                Currency: "GBP"
+              CreditDebitIndicator: "Debit"
+              Status: "Booked"
+              BookingDateTime: "2026-03-09T10:30:00Z"
+              TransactionInformation: "TESCO STORE 123 LONDON"
+              MerchantDetails:
+                MerchantName: "Tesco"
+                MerchantCategoryCode: "5411"
+              BankTransactionCode:
+                Code: "PMNT"
+                SubCode: "ICDT"
+        Links:
+          Self: "https://api.bank.com/open-banking/v3.1/aisp/accounts/1234567890/transactions?fromBookingDate=2026-03-01"
+        Meta:
+          TotalPages: 1
+          TotalRecords: 15
+          FirstAvailableDateTime: "2026-03-01T00:00:00Z"
+          LastAvailableDateTime: "2026-03-09T23:59:59Z"
+
+    paginated-transactions:
+      summary: Paginated transaction response
+      value:
+        Data:
+          Transaction:
+            - AccountId: "1234567890"
+              TransactionId: "TX20260309123456"
+              Amount:
+                Amount: "45.67"
+                Currency: "GBP"
+              CreditDebitIndicator: "Debit"
+              Status: "Booked"
+              BookingDateTime: "2026-03-09T10:30:00Z"
+              TransactionInformation: "TESCO STORE 123 LONDON"
+        Links:
+          Self: "https://api.bank.com/open-banking/v3.1/aisp/accounts/1234567890/transactions?page=2&limit=50"
+          First: "https://api.bank.com/open-banking/v3.1/aisp/accounts/1234567890/transactions?page=1&limit=50"
+          Prev: "https://api.bank.com/open-banking/v3.1/aisp/accounts/1234567890/transactions?page=1&limit=50"
+          Next: "https://api.bank.com/open-banking/v3.1/aisp/accounts/1234567890/transactions?page=3&limit=50"
+          Last: "https://api.bank.com/open-banking/v3.1/aisp/accounts/1234567890/transactions?page=5&limit=50"
+        Meta:
+          TotalPages: 5
+          TotalRecords: 234
+          FirstAvailableDateTime: "2025-01-01T00:00:00Z"
+          LastAvailableDateTime: "2026-03-09T23:59:59Z"
+
+security:
+  - oauth2:
+      - accounts
+  - mutualTLS: []
+
+tags:
+  - name: Accounts
+    description: Operations for retrieving account information
+    externalDocs:
+      description: Account Information Guide
+      url: https://developer.bank.com/docs/accounts
+  - name: Balances
+    description: Operations for retrieving account balances
+  - name: Transactions
+    description: Operations for retrieving transaction history
+  - name: Beneficiaries
+    description: Operations for retrieving beneficiary information
+  - name: DirectDebits
+    description: Operations for retrieving direct debit mandates
+  - name: StandingOrders
+    description: Operations for retrieving standing orders
+  - name: Products
+    description: Operations for retrieving product details
+  - name: Offers
+    description: Operations for retrieving account offers
+  - name: Parties
+    description: Operations for retrieving party information
+  - name: ScheduledPayments
+    description: Operations for retrieving scheduled payments
+
+externalDocs:
+  description: Full Open Banking Documentation
+  url: https://www.openbanking.org.uk/read-write-apis/
