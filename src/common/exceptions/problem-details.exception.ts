@@ -1,5 +1,11 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
-import { BusinessRuleViolationDetails, ConsentProblemDetails, PaymentProblemDetails, ProblemDetails, ValidationProblemDetails } from './problem-details.interface';
+import { 
+  BusinessRuleViolationDetails, 
+  ConsentProblemDetails, 
+  PaymentProblemDetails, 
+  ProblemDetails, 
+  ValidationProblemDetails 
+} from './problem-details.dto';
 
 export class ProblemDetailsException extends HttpException {
   constructor(problemDetails: ProblemDetails) {

@@ -6,7 +6,7 @@ import {
   BusinessRuleViolationDetails,
   ConsentProblemDetails,
   PaymentProblemDetails 
-} from '../exceptions/problem-details.interface';
+} from '../exceptions/problem-details.dto';
 
 export const ApiProblemDetails = (
   status: number,
@@ -17,7 +17,7 @@ export const ApiProblemDetails = (
     ApiResponse({
       status,
       description,
-      schema: {x
+      schema: {
         allOf: [
           { $ref: getSchemaPath(ProblemDetails) },
           {

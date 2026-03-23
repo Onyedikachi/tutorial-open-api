@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { SagaOrchestrator } from '../saga.orchestrator';
+import { SagaOrchestrator, SagaStepHandler } from '../saga.orchestrator';
 import { EntityManager } from 'typeorm';
 
 export interface ConsentSagaContext {

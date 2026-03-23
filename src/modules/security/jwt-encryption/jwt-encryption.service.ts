@@ -118,12 +118,12 @@ export class JwtEncryptionService {
     }
 
     // Validate amount is positive
-    if (payload.amount <= 0) {
+    if (payload.amount && payload.amount <= 0) {
       throw new UnauthorizedException('Invalid amount');
     }
 
     // Validate currency (ISO 4217)
-    if (!/^[A-Z]{3}$/.test(payload.currency)) {
+    if ( payload.currency && !/^[A-Z]{3}$/.test(payload.currency)) {
       throw new UnauthorizedException('Invalid currency format');
     }
 

@@ -10,7 +10,7 @@ import { Request, Response } from 'express';
 import { QueryFailedError } from 'typeorm';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import { ProblemDetailsException } from '../exceptions/problem-details.exception';
-import { ProblemDetails } from '../exceptions/problem-details.interface';
+import { ProblemDetails } from '../exceptions/problem-details.dto';
 import { v4 as uuidv4 } from 'uuid';
 
 @Catch()
