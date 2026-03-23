@@ -9,6 +9,7 @@ import { EventProducer } from '../events/producers/event.producer';
 import { PaymentEventProducer } from '../events/producers/payment-event.producer';
 import { PaymentSaga } from '../saga/sagas/payment.saga';
 import { SagaModule } from '../saga/saga.module';
+import { CacheModule } from '@nestjs/cache-manager';
 
 @Module({
   imports: [
@@ -24,6 +25,11 @@ import { SagaModule } from '../saga/saga.module';
         },
       },
     ]),
+    CacheModule.register({
+      ttl: 60, //seconds
+      max: 100, 
+      isGlobal: false, 
+    }),
     SagaModule,
   ],
   controllers: [PaymentController],

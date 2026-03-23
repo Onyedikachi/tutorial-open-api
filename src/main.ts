@@ -37,9 +37,9 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config, {
     extraModels: [
       // Add RFC 7807 models
-      require('./common/exceptions/problem-details.interface').ProblemDetails,
-      require('./common/exceptions/problem-details.interface').ValidationProblemDetails,
-      require('./common/exceptions/problem-details.interface').PaymentProblemDetails,
+      require('./common/exceptions/problem-details.dto').ProblemDetails,
+      require('./common/exceptions/problem-details.dto').ValidationProblemDetails,
+      require('./common/exceptions/problem-details.dto').PaymentProblemDetails,
     ],
   });
 

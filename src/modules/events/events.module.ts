@@ -4,10 +4,16 @@ import { EventProducer } from './producers/event.producer';
 import { PaymentEventConsumer } from './consumers/payment-event.consumer';
 import { AuditEventConsumer } from './consumers/audit-event.consumer';
 import { NotificationEventConsumer } from './consumers/notification-event.consumer';
+import { PaymentEventProducer } from './producers/payment-event.producer';
+import { PaymentService } from '../payments/payment.service';
+import { AuditLogger } from 'src/common/services/audit-logger.service';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuditLog } from 'src/common/entities/audit-log.entity';
 
 @Global()
 @Module({
   imports: [
+    TypeOrmModule.forFeature([AuditLog]),
     ClientsModule.register([
       {
         name: 'RABBITMQ_SERVICE',
@@ -32,8 +38,11 @@ import { NotificationEventConsumer } from './consumers/notification-event.consum
     EventProducer,
     PaymentEventConsumer,
     AuditEventConsumer,
-    NotificationEventConsumer
+    NotificationEventConsumer,
+    PaymentEventProducer,
+    PaymentService,
+    AuditLogger,
   ],
-  exports: [EventProducer]
+  exports: [EventProducer, PaymentEventProducer]
 })
 export class EventsModule {}

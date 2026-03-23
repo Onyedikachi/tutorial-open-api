@@ -6,6 +6,10 @@ import { OAuth2Strategy } from './strategies/oauth2.strategy';
 import { ConsentService } from './services/consent.service';
 import { AuthService } from './auth.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { AuthorizationCode } from './entities/authorization-code.entity';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConsentRequest } from './entities/consent-request.entity';
+import { PKCEService } from './services/pkce.service';
 
 @Module({
   imports: [
@@ -22,9 +26,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       }),
       inject: [ConfigService],
     }),
+    TypeOrmModule.forFeature([AuthorizationCode, ConsentRequest]),
   ],
   controllers: [AuthController],
-  providers: [AuthService, OAuth2Strategy, ConsentService],
+  providers: [AuthService, OAuth2Strategy, ConsentService, PKCEService, ConfigService],
   exports: [AuthService],
 })
 export class AuthModule {}

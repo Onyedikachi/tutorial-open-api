@@ -14,6 +14,7 @@ export const ApiProblemDetails = (
   problemType?: string,
 ) => {
   return applyDecorators(
+    ApiExtraModels(ProblemDetails),
     ApiResponse({
       status,
       description,
