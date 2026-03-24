@@ -10,10 +10,10 @@ export class RegistryService implements OnModuleInit {
 
   async onModuleInit() {
     // Fetch participants metadata on startup
-    await this.syncParticipants();
+    // await this.syncParticipants();
     
     // Schedule periodic sync
-    setInterval(() => this.syncParticipants(), 3600000); // Every hour
+    // setInterval(() => this.syncParticipants(), 3600000); // Every hour
   }
 
   async syncParticipants(): Promise<void> {
