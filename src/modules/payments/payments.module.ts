@@ -10,6 +10,7 @@ import { PaymentEventProducer } from '../events/producers/payment-event.producer
 import { PaymentSaga } from '../saga/sagas/payment.saga';
 import { SagaModule } from '../saga/saga.module';
 import { CacheModule } from '@nestjs/cache-manager';
+import { RedisProvider } from '../../common/providers/redis.provider';
 
 @Module({
   imports: [
@@ -33,6 +34,6 @@ import { CacheModule } from '@nestjs/cache-manager';
     SagaModule,
   ],
   controllers: [PaymentController],
-  providers: [PaymentService, IdempotentPaymentService, EventProducer, PaymentEventProducer],
+  providers: [PaymentService, IdempotentPaymentService, EventProducer, PaymentEventProducer, RedisProvider],
 })
 export class PaymentsModule {}
