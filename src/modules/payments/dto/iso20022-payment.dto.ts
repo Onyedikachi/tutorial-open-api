@@ -10,6 +10,7 @@ class AccountIdentification {
 }
 
 class Amount {
+  @Type(() => Number)
   @IsNumber()
   value: number;
 
@@ -30,6 +31,7 @@ export class ISO20022PaymentDTO {
   @IsString()
   messageId: string;
 
+  @Type(() => Date)
   @IsDate()
   creationDateTime: Date;
 

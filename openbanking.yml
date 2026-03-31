@@ -59,25 +59,28 @@ servers:
 
 tags:
   - name: Accounts
-    description: Account discovery and metadata
+    description: Operations for retrieving account information
+    externalDocs:
+      description: Account Information Guide
+      url: https://developer.bank.com/docs/accounts
   - name: Balances
-    description: Account balance information
+    description: Operations for retrieving account balances
   - name: Transactions
-    description: Transaction history and details
+    description: Operations for retrieving transaction history
   - name: Beneficiaries
-    description: Beneficiary/payee information
+    description: Operations for retrieving beneficiary information
   - name: DirectDebits
-    description: Direct debit mandates
+    description: Operations for retrieving direct debit mandates
   - name: StandingOrders
-    description: Standing order configurations
+    description: Operations for retrieving standing orders
   - name: Products
-    description: Account product details
+    description: Operations for retrieving product details
   - name: Offers
-    description: Account offers and promotions
+    description: Operations for retrieving account offers
   - name: Parties
-    description: Account holder information
+    description: Operations for retrieving party information
   - name: ScheduledPayments
-    description: Future-dated payments
+    description: Operations for retrieving scheduled payments
 
 paths:
   /accounts:
@@ -2200,31 +2203,6 @@ security:
   - oauth2:
       - accounts
   - mutualTLS: []
-
-tags:
-  - name: Accounts
-    description: Operations for retrieving account information
-    externalDocs:
-      description: Account Information Guide
-      url: https://developer.bank.com/docs/accounts
-  - name: Balances
-    description: Operations for retrieving account balances
-  - name: Transactions
-    description: Operations for retrieving transaction history
-  - name: Beneficiaries
-    description: Operations for retrieving beneficiary information
-  - name: DirectDebits
-    description: Operations for retrieving direct debit mandates
-  - name: StandingOrders
-    description: Operations for retrieving standing orders
-  - name: Products
-    description: Operations for retrieving product details
-  - name: Offers
-    description: Operations for retrieving account offers
-  - name: Parties
-    description: Operations for retrieving party information
-  - name: ScheduledPayments
-    description: Operations for retrieving scheduled payments
 
 externalDocs:
   description: Full Open Banking Documentation

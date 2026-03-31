@@ -25,7 +25,7 @@ export class PaymentEventConsumer {
       const result = await this.paymentService.processInCoreBanking(event.data);
 
       // Acknowledge message
-      channel.ack(originalMsg);
+      // channel.ack(originalMsg);
 
       // Log for audit
       await this.auditLogger.log({
@@ -39,10 +39,10 @@ export class PaymentEventConsumer {
       
       // Reject and requeue if temporary failure
       if (this.isRetryable(error)) {
-        channel.nack(originalMsg, false, true);
+        // channel.nack(originalMsg, false, true);
       } else {
         // Move to dead letter queue
-        channel.nack(originalMsg, false, false);
+        // channel.nack(originalMsg, false, false);
       }
     }
   }
@@ -65,11 +65,11 @@ export class PaymentEventConsumer {
       // Trigger notifications
       await this.triggerPaymentNotification(event.data);
 
-      channel.ack(originalMsg);
+      // channel.ack(originalMsg);
 
     } catch (error) {
       this.logger.error(`Failed to handle payment completion: ${error.message}`);
-      channel.nack(originalMsg, false, true);
+      // channel.nack(originalMsg, false, true);
     }
   }
 
@@ -91,11 +91,11 @@ export class PaymentEventConsumer {
       // Trigger failure notifications
       await this.triggerFailureNotification(event.data);
 
-      channel.ack(originalMsg);
+      // channel.ack(originalMsg);
 
     } catch (error) {
       this.logger.error(`Failed to handle payment failure: ${error.message}`);
-      channel.nack(originalMsg, false, true);
+      // channel.nack(originalMsg, false, true);
     }
   }
 

@@ -1,6 +1,14 @@
-
-
-import { Controller, Post, Get, Body, Param, Headers, UseInterceptors, Req } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Param,
+  Headers,
+  UseInterceptors,
+  Req,
+  ConflictException,
+} from '@nestjs/common';
 import { PaymentService } from './payment.service';
 
 import { PaymentSaga } from '../saga/sagas/payment.saga';
@@ -10,10 +18,12 @@ import { ISO20022PaymentDTO } from './dto/iso20022-payment.dto';
 import { ProblemDetailsException } from '../../common/exceptions/problem-details.exception';
 import { EventProducer, EventType } from '../events/producers/event.producer';
 
-
 import { PISTGuard } from '../gateway/guards/pist.guard';
 import { PIFTGuard } from '../gateway/guards/pift.guard';
 import { IdempotentPaymentService } from './idempotent-payment.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { IdempotentRequest } from './entities/idempotent-request.entity';
+import { Repository } from 'typeorm';
 
 @Controller('payments')
 @UseInterceptors(IdempotencyInterceptor)
@@ -23,6 +33,9 @@ export class PaymentController {
     private idempotentService: IdempotentPaymentService,
     private paymentSaga: PaymentSaga,
     private eventProducer: EventProducer,
+
+    @InjectRepository(IdempotentRequest)
+    private idempotentRepo: Repository<IdempotentRequest>,
   ) {}
 
   @Post()
@@ -41,6 +54,24 @@ export class PaymentController {
         instance: req.path,
       });
     }
+
+    // check redis if idempotency key already exist
+    const existing = await this.idempotentRepo.findOne({
+      where: { idempotencyKey },
+    });
+    if (existing) {
+      if (existing.status === 'completed') return existing.response;
+      if (existing.status === 'processing')
+        throw new ConflictException('Request already processing');
+    }
+
+    const request = this.idempotentRepo.create({
+      idempotencyKey,
+      paymentData: paymentDTO,
+      status: 'processing',
+    });
+    await this.idempotentRepo.save(request);
+
 
     const paymentId = `pay_${Date.now()}`;
 
@@ -76,7 +107,6 @@ export class PaymentController {
     //   }
     // };
 
-
     return {
       paymentId,
       sagaId,
@@ -100,14 +130,14 @@ export class PaymentController {
   @Idempotent()
   async reversePayment(
     @Param('paymentId') paymentId: string,
-    @Headers('idempotency-key') idempotencyKey: string
+    @Headers('idempotency-key') idempotencyKey: string,
   ) {
     const reversal = await this.paymentService.reversePayment(paymentId);
 
     await this.eventProducer.emit(EventType.PAYMENT_REVERSED, {
       paymentId,
       reversalId: reversal.id,
-      timestamp: new Date()
+      timestamp: new Date(),
     });
 
     return reversal;
@@ -143,5 +173,4 @@ export class PaymentController {
   //     idempotencyKey,
   //   };
   // }
-
 }

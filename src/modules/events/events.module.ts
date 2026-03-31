@@ -29,7 +29,8 @@ import { AuditLog } from 'src/common/entities/audit-log.entity';
             }
           },
           persistent: true,
-          noAck: false,
+          noAck: true,
+          // noAck: false,
         },
       },
     ]),

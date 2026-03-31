@@ -14,10 +14,10 @@ export class NotificationEventConsumer {
     try {
       // Send email/SMS/push notification
       this.logger.log(`Sending notification: ${JSON.stringify(event.data)}`);
-      channel.ack(originalMsg);
+      // channel.ack(originalMsg);
     } catch (error) {
       this.logger.error(`Notification failed: ${error.message}`);
-      channel.nack(originalMsg, false, true);
+      // channel.nack(originalMsg, false, true);
     }
   }
 }

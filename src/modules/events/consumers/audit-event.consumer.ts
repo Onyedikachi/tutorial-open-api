@@ -17,10 +17,10 @@ export class AuditEventConsumer {
 
     try {
       await this.auditLogger.log(event.data);
-      channel.ack(originalMsg);
+      // channel.ack(originalMsg);
     } catch (error) {
       this.logger.error(`Failed to process audit log: ${error.message}`);
-      channel.nack(originalMsg, false, true);
+      // channel.nack(originalMsg, false, true);
     }
   }
 
@@ -32,9 +32,9 @@ export class AuditEventConsumer {
     try {
       // Send compliance alert to regulatory reporting system
       this.logger.warn(`Compliance alert: ${JSON.stringify(event.data)}`);
-      channel.ack(originalMsg);
+      // channel.ack(originalMsg);
     } catch (error) {
-      channel.nack(originalMsg, false, true);
+      // channel.nack(originalMsg, false, true);
     }
   }
 }
