@@ -10,6 +10,7 @@ import { AuthorizationCode } from './entities/authorization-code.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConsentRequest } from './entities/consent-request.entity';
 import { PKCEService } from './services/pkce.service';
+import { RegistryService } from '../registry/registry.service';
 
 @Module({
   imports: [
@@ -29,7 +30,10 @@ import { PKCEService } from './services/pkce.service';
     TypeOrmModule.forFeature([AuthorizationCode, ConsentRequest]),
   ],
   controllers: [AuthController],
-  providers: [AuthService, OAuth2Strategy, ConsentService, PKCEService, ConfigService],
+  providers: [
+    AuthService, OAuth2Strategy, ConsentService, 
+    PKCEService, ConfigService, RegistryService
+  ],
   exports: [AuthService],
 })
 export class AuthModule {}
