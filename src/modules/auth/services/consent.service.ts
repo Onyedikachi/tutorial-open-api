@@ -20,11 +20,13 @@ export class ConsentService {
     codeChallengeMethod: string;
     nonce?: string;
     state?: string;
+    accounts?: string[];
   }): Promise<ConsentRequest> {
     const consentRequest = this.consentRepository.create({
       clientId: data.clientId,
       scope: data.scope,
       redirectUri: data.redirectUri,
+      accounts: data?.accounts,
       status: 'pending',
       createdAt: new Date(),
       expiresAt: new Date(Date.now() + 15 * 60 * 1000) // 15 minutes expiry

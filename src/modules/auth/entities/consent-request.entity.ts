@@ -12,6 +12,9 @@ export class ConsentRequest {
   @Column('simple-array')
   scope: string[];
 
+  @Column('simple-array', { nullable: true })
+  accounts: string[];
+
   @Column()
   redirectUri: string;
 

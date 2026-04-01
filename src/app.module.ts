@@ -15,6 +15,7 @@ import { CommonModule } from './common/common.module';
 import rabbitmqConfig from './config/rabbitmq.config';
 import { SagaModule } from './modules/saga/saga.module';
 import { JwtEncryptionModule } from './modules/security/jwt-encryption/jwt-encryption.module';
+import { AccountsService } from './modules/accounts/accounts.service';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { JwtEncryptionModule } from './modules/security/jwt-encryption/jwt-encry
     CommonModule,
     SagaModule,
     JwtEncryptionModule,
+    AccountsService,
   ],
 })
 export class AppModule {}
