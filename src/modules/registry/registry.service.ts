@@ -29,7 +29,7 @@ export class RegistryService implements OnModuleInit {
     setInterval(() => this.syncParticipants(), 3600000);
   }
 
-  // ✅ Mock data (used for dev/test or fallback)
+  // Mock data (used for dev/test or fallback)
   private loadMockParticipants() {
     const mockParticipants: Participant[] = [
       {
@@ -73,12 +73,16 @@ export class RegistryService implements OnModuleInit {
 
   // Get participant
   getParticipant(clientId: string): Participant | undefined {
-    return this.participants.get(clientId);
+    // return this.participants.get(clientId);
+    return this.participants.get('bank-a');
+    
   }
 
   //  Validate participant certificate
   validateParticipant(clientId: string, certificate: Certificate): boolean {
-    const participant = this.getParticipant(clientId);
+    // const participant = this.getParticipant(clientId);
+    const participant = this.getParticipant('bank-a');
+
     if (!participant) return false;
 
     return participant.certificates.some(

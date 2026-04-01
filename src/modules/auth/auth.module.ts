@@ -11,6 +11,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConsentRequest } from './entities/consent-request.entity';
 import { PKCEService } from './services/pkce.service';
 import { RegistryService } from '../registry/registry.service';
+import { HttpModule, HttpService } from '@nestjs/axios';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { RegistryService } from '../registry/registry.service';
       }),
       inject: [ConfigService],
     }),
+    HttpModule.register({ timeout: 10000 }),
     TypeOrmModule.forFeature([AuthorizationCode, ConsentRequest]),
   ],
   controllers: [AuthController],
@@ -34,6 +36,6 @@ import { RegistryService } from '../registry/registry.service';
     AuthService, OAuth2Strategy, ConsentService, 
     PKCEService, ConfigService, RegistryService
   ],
-  exports: [AuthService],
+  exports: [AuthService, HttpModule],
 })
 export class AuthModule {}

@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Req, Res, Body, Query, UnauthorizedException, Param } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Req,
+  Res,
+  Body,
+  Query,
+  UnauthorizedException,
+  Param,
+} from '@nestjs/common';
 
 import { ConsentService } from './services/consent.service';
 import { ConsentDTO } from './dto/consent.dto';
@@ -12,9 +22,21 @@ export class AuthController {
   constructor(
     private authService: AuthService,
     private consentService: ConsentService,
-    private pkceService: PKCEService
+    private pkceService: PKCEService,
   ) {}
 
+  @Post('consent')
+  async handleConsent(@Body() consentDTO: ConsentDTO, @Req() req: Request) {
+    // const userId = req.session?.user?.id ?? '0000'; // or req.user if using Passport JWT
+    const code = await this.consentService.processConsent(
+      consentDTO.consentId,
+      consentDTO.approved,
+      consentDTO.permissions,
+      consentDTO.accounts,
+      'test'
+    );
+    return { code };
+  }
   @Get('consent/:id')
   async getConsent(@Param('id') id: string) {
     return this.consentService.getConsentDetails(id);
@@ -22,15 +44,15 @@ export class AuthController {
 
   @Get('authorize')
   async authorize(@Req() req, @Res() res) {
-    const { 
-      client_id, 
-      redirect_uri, 
-      response_type, 
-      scope, 
+    const {
+      client_id,
+      redirect_uri,
+      response_type,
+      scope,
       state,
       code_challenge,
       code_challenge_method,
-      nonce 
+      nonce,
     } = req.query;
 
     if (response_type !== 'code') {
@@ -45,7 +67,7 @@ export class AuthController {
 
     // Validate PKCE parameters for confidential clients
     if (response_type === 'code' && !code_challenge) {
-       throw new ProblemDetailsException({
+      throw new ProblemDetailsException({
         type: 'https://api.openbanking.ng/errors/missing-pkce',
         title: 'PKCE Required',
         status: 400,
@@ -73,31 +95,41 @@ export class AuthController {
       codeChallenge: code_challenge,
       codeChallengeMethod: code_challenge_method || 'S256',
       nonce,
-      state
+      state,
     });
 
-    return res.redirect(`${redirect_uri}/consent/${consentRequest.id}`);
+    return res.redirect(`${redirect_uri}/consent/${consentRequest.id}   `);
   }
 
   @Post('token')
-  async token(@Body() tokenRequest: TokenRequestDTO,  @Req() req) {
-    const { grant_type, code, redirect_uri, client_id, client_secret, code_verifier } = tokenRequest;
+  async token(@Body() tokenRequest: TokenRequestDTO, @Req() req) {
+    const {
+      grant_type,
+      code,
+      redirect_uri,
+      client_id,
+      client_secret,
+      code_verifier,
+    } = tokenRequest;
 
-    switch(grant_type) {
+    switch (grant_type) {
       case 'authorization_code':
         // Verify PKCE code verifier
-        await this.pkceService.verifyCodeVerifier(code ?? '', code_verifier ?? '');
-        
-        return this.authService.exchangeCodeForToken(
-          code ?? '', 
-          client_id ?? '', 
-          client_secret,
-          code_verifier
+        await this.pkceService.verifyCodeVerifier(
+          code ?? '',
+          code_verifier ?? '',
         );
-      
+
+        return this.authService.exchangeCodeForToken(
+          code ?? '',
+          client_id ?? '',
+          client_secret,
+          code_verifier,
+        );
+
       case 'refresh_token':
         return this.authService.refreshToken(tokenRequest.refresh_token ?? '');
-      
+
       default:
         throw new ProblemDetailsException({
           type: 'https://api.openbanking.ng/errors/unsupported-grant-type',
@@ -122,7 +154,10 @@ export class AuthController {
       grant_types_supported: ['authorization_code', 'refresh_token'],
       subject_types_supported: ['public'],
       id_token_signing_alg_values_supported: ['RS256'],
-      token_endpoint_auth_methods_supported: ['client_secret_basic', 'private_key_jwt'],
+      token_endpoint_auth_methods_supported: [
+        'client_secret_basic',
+        'private_key_jwt',
+      ],
       claims_supported: ['sub', 'name', 'email', 'phone'],
       code_challenge_methods_supported: ['S256'],
     };

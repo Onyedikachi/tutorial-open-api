@@ -10,4 +10,8 @@ export class ConsentDTO {
   @IsArray()
   @IsString({ each: true })
   permissions: string[];
+
+  @IsArray()
+  @IsString({ each: true })
+  accounts: string[]; 
 }
