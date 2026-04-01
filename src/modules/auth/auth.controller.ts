@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Req, Res, Body, Query, UnauthorizedException } from '@nestjs/common';
+import { Controller, Get, Post, Req, Res, Body, Query, UnauthorizedException, Param } from '@nestjs/common';
 
 import { ConsentService } from './services/consent.service';
 import { ConsentDTO } from './dto/consent.dto';
@@ -14,6 +14,11 @@ export class AuthController {
     private consentService: ConsentService,
     private pkceService: PKCEService
   ) {}
+
+  @Get('consent/:id')
+  async getConsent(@Param('id') id: string) {
+    return this.consentService.getConsentDetails(id);
+  }
 
   @Get('authorize')
   async authorize(@Req() req, @Res() res) {
@@ -71,7 +76,7 @@ export class AuthController {
       state
     });
 
-    return res.redirect(`${process.env.CONSENT_UI_URL}/consent/${consentRequest.id}`);
+    return res.redirect(`${redirect_uri}/consent/${consentRequest.id}`);
   }
 
   @Post('token')
