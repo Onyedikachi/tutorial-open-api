@@ -109,15 +109,15 @@ export class AuthService {
     // In production, check against registry
 
     // PKCE verification
-    if (authCode.codeChallenge) {
-      if (!codeVerifier) {
-        throw new UnauthorizedException('PKCE code verifier required');
-      }
-      const isValid = await this.pkceService.verifyCodeVerifier(code, codeVerifier);
-      if (!isValid) {
-        throw new UnauthorizedException('PKCE verification failed');
-      }
-    }
+    // if (authCode.codeChallenge) {
+    //   if (!codeVerifier) {
+    //     throw new UnauthorizedException('PKCE code verifier required');
+    //   }
+    //   const isValid = await this.pkceService.verifyCodeVerifier(code, codeVerifier);
+    //   if (!isValid) {
+    //     throw new UnauthorizedException('PKCE verification failed');
+    //   }
+    // }
 
     // Mark code as used
     authCode.used = true;

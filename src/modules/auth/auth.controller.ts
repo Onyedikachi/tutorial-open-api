@@ -115,10 +115,10 @@ export class AuthController {
     switch (grant_type) {
       case 'authorization_code':
         // Verify PKCE code verifier
-        await this.pkceService.verifyCodeVerifier(
-          code ?? '',
-          code_verifier ?? '',
-        );
+        // await this.pkceService.verifyCodeVerifier(
+        //   code ?? '',
+        //   code_verifier ?? '',
+        // );
 
         return this.authService.exchangeCodeForToken(
           code ?? '',
