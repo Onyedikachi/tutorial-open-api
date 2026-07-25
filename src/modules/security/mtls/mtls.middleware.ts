@@ -1,19 +1,26 @@
 import { Injectable, NestMiddleware, UnauthorizedException, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Request, Response, NextFunction } from 'express';
+import { timingSafeEqual } from 'crypto';
 import { CertificateValidator } from './certificate-validator.service';
 import { RegistryService } from '../../registry/registry.service';
 
 /**
  * Verifies the mTLS client-certificate identity for requests that reach
- * the app through the mTLS gateway (nginx/mtls-gateway.conf). That proxy
- * terminates TLS, requires+verifies a client certificate against the CA
- * bundle, and forwards the result via X-SSL-Client-* headers.
+ * the app through the mTLS gateway (nginx/mtls-gateway.conf.template).
+ * That proxy terminates TLS, requires+verifies a client certificate
+ * against the CA bundle, and forwards the result via X-SSL-Client-*
+ * headers, plus a shared secret (X-Gateway-Secret) proving the request
+ * actually came through it.
  *
  * This middleware does not itself perform TLS termination - the app is
- * plain HTTP behind the proxy - so it MUST only be trusted on a network
- * path where the proxy is the sole entry point. Requests that reach the
- * app directly (e.g. the dev :3000 port used by the browser demo
- * frontend) simply won't carry these headers and will be rejected here.
+ * plain HTTP behind the proxy - so the X-SSL-Client-* headers alone are
+ * forgeable by anyone who can reach the app directly (e.g. the dev :3000
+ * port kept open for the browser demo frontend). The shared secret is
+ * what actually closes that gap: it's never sent to the browser, only
+ * the proxy and this app know it, and MTLS_GATEWAY_SECRET must be
+ * configured (matching, on both sides) for ANY request to pass here -
+ * fails closed rather than silently trusting an unconfigured deployment.
  */
 @Injectable()
 export class MTLSMiddleware implements NestMiddleware {
@@ -22,9 +29,12 @@ export class MTLSMiddleware implements NestMiddleware {
   constructor(
     private certValidator: CertificateValidator,
     private registryService: RegistryService,
+    private configService: ConfigService,
   ) {}
 
   use(req: Request, res: Response, next: NextFunction) {
+    this.verifyGatewaySecret(req);
+
     const verify = req.header('x-ssl-client-verify');
 
     if (verify !== 'SUCCESS') {
@@ -82,6 +92,26 @@ export class MTLSMiddleware implements NestMiddleware {
     };
 
     next();
+  }
+
+  private verifyGatewaySecret(req: Request): void {
+    const expected = this.configService.get<string>('MTLS_GATEWAY_SECRET');
+    if (!expected) {
+      throw new UnauthorizedException(
+        'mTLS gateway is not configured (MTLS_GATEWAY_SECRET unset) - refusing all requests',
+      );
+    }
+
+    const provided = req.header('x-gateway-secret') ?? '';
+    const expectedBuf = Buffer.from(expected);
+    const providedBuf = Buffer.from(provided);
+
+    const valid =
+      expectedBuf.length === providedBuf.length && timingSafeEqual(expectedBuf, providedBuf);
+
+    if (!valid) {
+      throw new UnauthorizedException('Request did not originate from the mTLS gateway');
+    }
   }
 
   private parseDnField(dn: string, field: string): string | undefined {

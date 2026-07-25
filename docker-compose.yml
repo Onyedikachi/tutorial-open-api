@@ -27,16 +27,20 @@ services:
       RABBITMQ_DEFAULT_PASS: guest
 
   # mTLS gateway (matls.*) in front of the API - run
-  # certs/generate-dev-certs.sh once before starting this service.
+  # certs/generate-dev-certs.sh once before starting this service, and set
+  # MTLS_GATEWAY_SECRET (e.g. `openssl rand -hex 32`) in a .env file here
+  # AND in the shell that runs `npm run start:dev` - see nginx/README.md.
   # The API itself keeps running on the host via `npm run start:dev` and
   # stays reachable directly on :3000 for the browser-based demo frontend,
-  # which never presents a client certificate. See nginx/mtls-gateway.conf.
+  # which never presents a client certificate. See nginx/mtls-gateway.conf.template.
   mtls-gateway:
     image: nginx:1.27-alpine
     ports:
       - "8443:8443"
+    environment:
+      MTLS_GATEWAY_SECRET: ${MTLS_GATEWAY_SECRET:?Set MTLS_GATEWAY_SECRET in a .env file next to docker-compose.yml - see nginx/README.md}
     volumes:
-      - ./nginx/mtls-gateway.conf:/etc/nginx/conf.d/mtls-gateway.conf:ro
+      - ./nginx/mtls-gateway.conf.template:/etc/nginx/templates/mtls-gateway.conf.template:ro
       - ./certs:/etc/nginx/certs:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
