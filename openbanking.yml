@@ -1,72 +1,88 @@
-openapi: 3.0.0
+openapi: 3.1.0
 
 info:
-  title: Open Banking Account Information API (AIS)
+  title: Open Banking Nigeria API (AISP & PISP)
   description: |
-    # Account Information API
-    This API provides access to account information for authorized Third Party Providers (TPPs).
-    
+    # Open Banking Nigeria API
+    CBN-compliant Account Information (AISP) and Payment Initiation (PISP)
+    API for authorized Third Party Providers (TPPs), implementing the
+    access-rule categories from the CBN Operational Guidelines for Open
+    Banking in Nigeria:
+
+    - **AIS** - account/balance/transaction/statement read access
+    - **PIST** - Payment Initiation Single Transfer
+    - **PIFT** - Payment Initiation Future-dated Transfer
+    - **MIT** - Merchant Initiated Transaction
+    - **PAST** - Payment Account Statement Transfer
+
     ## Key Features
     - **Account Discovery**: List accounts with detailed metadata
     - **Transaction History**: Retrieve transactions with rich filtering
     - **Balance Information**: Real-time account balances
+    - **Payment Initiation**: Single, future-dated and merchant-initiated transfers
     - **Beneficiary Management**: Access payee information
     - **Direct Debits & Standing Orders**: View recurring payments
-    
+
     ## Version Information
-    - Current Version: 3.1.6
-    - UK Open Banking Compliance: Yes
+    - Current Version: 1.0.0
+    - CBN Open Banking Nigeria Compliance: Yes
     - FAPI Compliant: Yes (Read/Write)
-    
-    ## Important Notes
-    - All endpoints require valid OAuth2 tokens with appropriate scopes
-    - Use `x-fapi-interaction-id` for request tracing
-    - Rate limits apply (see documentation)
-    - RFC 7807 error responses for all 4xx/5xx errors
-    
+
+    ## Security
+    - Every resource and payment call requires **both** a certificate-bound
+      OAuth2 access token (Authorization Code + PKCE, S256 only) **and**
+      mutual TLS on the `matls.` host - see the `oauth2` and `mutualTLS`
+      security schemes below, which are combined (AND), not alternatives.
+    - Use `x-fapi-interaction-id` for request tracing.
+    - `Idempotency-Key` is required on all payment-initiating POST requests.
+    - Rate limits apply (see documentation).
+    - RFC 7807 (`application/problem+json`) error responses for all 4xx/5xx errors.
+
     ## Support
-    - Developer Portal: [https://developer.bank.com](https://developer.bank.com)
-    - API Status: [https://status.bank.com](https://status.bank.com)
-    - Email: api-support@bank.com
-    
-  version: 3.1.6
-  termsOfService: https://bank.com/api/terms
+    - Developer Portal: [https://developer.openbanking.ng](https://developer.openbanking.ng)
+    - API Status: [https://status.openbanking.ng](https://status.openbanking.ng)
+    - Email: api-support@openbanking.ng
+
+  version: 1.0.0
+  termsOfService: https://openbanking.ng/api/terms
   contact:
-    name: Open Banking API Support
-    email: api-support@bank.com
-    url: https://developer.bank.com/support
+    name: Open Banking Nigeria API Support
+    email: api-support@openbanking.ng
+    url: https://developer.openbanking.ng/support
   license:
-    name: Open Banking License
-    url: https://www.openbanking.org.uk/terms
+    name: CBN Open Banking Nigeria Operational Guidelines
+    url: https://www.cbn.gov.ng/Out/2021/CCD/Operational%20Guidelines%20for%20Open%20Banking%20in%20Nigeria.pdf
 
 servers:
-  - url: https://rs.bank.com/open-banking/v3.1/aisp
-    description: Production Server (TLS 1.3 required)
-  - url: https://matls.rs.bank.com/open-banking/v3.1/aisp
-    description: Production Server with mTLS
-  - url: https://sandbox.bank.com/open-banking/v3.1/aisp
-    description: Sandbox Environment
-  - url: https://rs.bank.com/open-banking/v{version}/aisp
-    description: Versioned endpoint pattern
-    variables:
-      version:
-        enum:
-          - v3.1
-          - v3.0
-          - v2.0
-        default: v3.1
-        description: API version
+  - url: https://rs.openbanking.ng/v1
+    description: Production Server - OAuth2 authorization/token/consent journey (TLS 1.3 required, no client certificate)
+  - url: https://matls.rs.openbanking.ng/v1
+    description: Production Server - AISP/PISP resource and payment calls (mTLS + OAuth2 required)
+  - url: https://sandbox.openbanking.ng/v1
+    description: Sandbox Environment (mTLS + OAuth2 required, test CA)
+  - url: http://localhost:3000
+    description: Local development (OAuth2 journey only, no mTLS)
+  - url: https://localhost:8443
+    description: Local development mTLS gateway - see certs/generate-dev-certs.sh
 
 tags:
+  - name: Authorization
+    description: OAuth2 Authorization Code + PKCE flow, consent management, and OIDC discovery
+  - name: Payments
+    description: PISP payment initiation and lifecycle (PIST single transfer, PIFT future-dated transfer)
+  - name: AccessRules
+    description: CBN access-rule category endpoints (PIST/MIT/PIFT/PAST) gated by TPP-granted permissions
   - name: Accounts
     description: Operations for retrieving account information
     externalDocs:
       description: Account Information Guide
-      url: https://developer.bank.com/docs/accounts
+      url: https://developer.openbanking.ng/docs/accounts
   - name: Balances
     description: Operations for retrieving account balances
   - name: Transactions
     description: Operations for retrieving transaction history
+  - name: Statements
+    description: PAST - account statement retrieval for a TPP-authorized account
   - name: Beneficiaries
     description: Operations for retrieving beneficiary information
   - name: DirectDebits
@@ -155,7 +171,8 @@ paths:
           $ref: '#/components/responses/500Error'
       security:
         - oauth2:
-            - accounts
+            - accounts_read
+          mutualTLS: []
 
   /accounts/{AccountId}:
     get:
@@ -198,7 +215,8 @@ paths:
           $ref: '#/components/responses/500Error'
       security:
         - oauth2:
-            - accounts
+            - accounts_read
+          mutualTLS: []
 
   /accounts/{AccountId}/balances:
     get:
@@ -261,7 +279,8 @@ paths:
           $ref: '#/components/responses/429Error'
       security:
         - oauth2:
-            - accounts
+            - accounts_read
+          mutualTLS: []
 
   /accounts/{AccountId}/transactions:
     get:
@@ -341,7 +360,8 @@ paths:
           $ref: '#/components/responses/429Error'
       security:
         - oauth2:
-            - accounts
+            - accounts_read
+          mutualTLS: []
 
   /accounts/{AccountId}/beneficiaries:
     get:
@@ -375,7 +395,8 @@ paths:
           $ref: '#/components/responses/404Error'
       security:
         - oauth2:
-            - accounts
+            - accounts_read
+          mutualTLS: []
 
   /accounts/{AccountId}/direct-debits:
     get:
@@ -409,7 +430,8 @@ paths:
           $ref: '#/components/responses/404Error'
       security:
         - oauth2:
-            - accounts
+            - accounts_read
+          mutualTLS: []
 
   /accounts/{AccountId}/standing-orders:
     get:
@@ -443,7 +465,8 @@ paths:
           $ref: '#/components/responses/404Error'
       security:
         - oauth2:
-            - accounts
+            - accounts_read
+          mutualTLS: []
 
   /accounts/{AccountId}/offers:
     get:
@@ -475,7 +498,8 @@ paths:
           $ref: '#/components/responses/404Error'
       security:
         - oauth2:
-            - accounts
+            - accounts_read
+          mutualTLS: []
 
   /accounts/{AccountId}/party:
     get:
@@ -507,7 +531,8 @@ paths:
           $ref: '#/components/responses/404Error'
       security:
         - oauth2:
-            - accounts
+            - accounts_read
+          mutualTLS: []
 
   /accounts/{AccountId}/scheduled-payments:
     get:
@@ -543,7 +568,8 @@ paths:
           $ref: '#/components/responses/404Error'
       security:
         - oauth2:
-            - accounts
+            - accounts_read
+          mutualTLS: []
 
   /accounts/{AccountId}/product:
     get:
@@ -575,7 +601,8 @@ paths:
           $ref: '#/components/responses/404Error'
       security:
         - oauth2:
-            - accounts
+            - accounts_read
+          mutualTLS: []
 
   /balances:
     get:
@@ -606,7 +633,404 @@ paths:
           $ref: '#/components/responses/403Error'
       security:
         - oauth2:
-            - accounts
+            - accounts_read
+          mutualTLS: []
+
+  /auth/authorize:
+    get:
+      summary: Start the OAuth2 Authorization Code + PKCE flow
+      description: |
+        Redirects the PSU's browser into the TPP's consent journey after
+        validating PKCE parameters (S256 only). Browser-facing - no access
+        token or client certificate exists yet, so this is unauthenticated.
+      operationId: authorize
+      tags: [Authorization]
+      security: []
+      parameters:
+        - name: client_id
+          in: query
+          required: true
+          schema: { type: string }
+        - name: redirect_uri
+          in: query
+          required: true
+          schema: { type: string, format: uri }
+        - name: response_type
+          in: query
+          required: true
+          schema: { type: string, enum: [code] }
+        - name: scope
+          in: query
+          schema: { type: string }
+        - name: state
+          in: query
+          schema: { type: string }
+        - name: code_challenge
+          in: query
+          required: true
+          schema: { type: string }
+        - name: code_challenge_method
+          in: query
+          schema: { type: string, enum: [S256] }
+        - name: nonce
+          in: query
+          schema: { type: string }
+      responses:
+        '302':
+          description: Redirect to the TPP's consent UI with a consentId
+        '400':
+          $ref: '#/components/responses/400Error'
+
+  /auth/token:
+    post:
+      summary: Exchange an authorization code or refresh token for an access token
+      operationId: token
+      tags: [Authorization]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRequestBody'
+      responses:
+        '200':
+          description: Token issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          $ref: '#/components/responses/400Error'
+        '401':
+          $ref: '#/components/responses/401Error'
+
+  /auth/consent:
+    post:
+      summary: Record the PSU's consent decision
+      description: Called by the TPP's frontend after the PSU approves or denies the requested permissions/accounts.
+      operationId: submitConsent
+      tags: [Authorization]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsentRequestBody'
+      responses:
+        '200':
+          description: Consent processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsentResponse'
+        '400':
+          $ref: '#/components/responses/400Error'
+        '404':
+          $ref: '#/components/responses/404Error'
+
+  /auth/consent/{consentId}:
+    get:
+      summary: Get consent request details
+      operationId: getConsentDetails
+      tags: [Authorization]
+      security: []
+      parameters:
+        - name: consentId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Consent details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsentDetails'
+        '404':
+          $ref: '#/components/responses/404Error'
+
+  /auth/.well-known/openid-configuration:
+    get:
+      summary: OIDC discovery document
+      operationId: getOpenIdConfiguration
+      tags: [Authorization]
+      security: []
+      responses:
+        '200':
+          description: OIDC configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenIdConfiguration'
+
+  /payments:
+    post:
+      summary: Initiate a single immediate payment (PIST)
+      description: |
+        CBN access rule **PIST** (Payment Initiation Single Transfer).
+        Requires the `pist_access` grant on the calling TPP's Open Banking
+        Registry record, verified via the mTLS client certificate.
+      operationId: initiatePayment
+      tags: [Payments]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/x-fapi-interaction-id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ISO20022Payment'
+      responses:
+        '201':
+          description: Payment accepted for processing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentInitiationResponse'
+        '400':
+          $ref: '#/components/responses/400Error'
+        '401':
+          $ref: '#/components/responses/401Error'
+        '403':
+          $ref: '#/components/responses/403Error'
+        '409':
+          $ref: '#/components/responses/409Error'
+        '422':
+          $ref: '#/components/responses/422Error'
+      security:
+        - oauth2:
+            - payments_initiate
+          mutualTLS: []
+
+  /payments/{paymentId}/status:
+    get:
+      summary: Get payment status
+      operationId: getPaymentStatus
+      tags: [Payments]
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/x-fapi-interaction-id'
+      responses:
+        '200':
+          description: Payment status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentStatusResponse'
+        '401':
+          $ref: '#/components/responses/401Error'
+        '404':
+          $ref: '#/components/responses/404Error'
+      security:
+        - oauth2:
+            - payments_initiate
+          mutualTLS: []
+
+  /payments/{paymentId}/reverse:
+    post:
+      summary: Reverse a previously initiated payment
+      operationId: reversePayment
+      tags: [Payments]
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Reversal accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentReversalResponse'
+        '401':
+          $ref: '#/components/responses/401Error'
+        '404':
+          $ref: '#/components/responses/404Error'
+        '409':
+          $ref: '#/components/responses/409Error'
+      security:
+        - oauth2:
+            - payments_initiate
+          mutualTLS: []
+
+  /payments/pift/schedule:
+    post:
+      summary: Schedule a future-dated payment (PIFT)
+      description: |
+        CBN access rule **PIFT** (Payment Initiation Future-dated
+        Transfer). Requires the `pift_access` grant. `executionDate` must
+        be in the future - this endpoint also requires the nested
+        JWS+JWE ("EncryptedJWT") bearer token in addition to the plain
+        OAuth2 + mTLS requirement below (see JwtEncryptionMiddleware).
+      operationId: scheduleFuturePayment
+      tags: [Payments]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FuturePaymentRequest'
+      responses:
+        '201':
+          description: Payment scheduled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentInitiationResponse'
+        '400':
+          $ref: '#/components/responses/400Error'
+        '401':
+          $ref: '#/components/responses/401Error'
+        '403':
+          $ref: '#/components/responses/403Error'
+        '409':
+          $ref: '#/components/responses/409Error'
+        '422':
+          $ref: '#/components/responses/422Error'
+      security:
+        - oauth2:
+            - payments_initiate
+          mutualTLS: []
+
+  /gateway/pist/status:
+    get:
+      summary: PIST access-rule probe
+      description: Returns 200 only if the calling TPP has been granted `pist_access`.
+      operationId: gatewayPistStatus
+      tags: [AccessRules]
+      responses:
+        '200':
+          description: PIST access granted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessRuleStatus'
+        '401':
+          $ref: '#/components/responses/401Error'
+        '403':
+          $ref: '#/components/responses/403Error'
+      security:
+        - oauth2:
+            - payments_initiate
+          mutualTLS: []
+
+  /gateway/mit/initiate:
+    post:
+      summary: MIT access-rule probe
+      description: Returns 200 only if the calling TPP has been granted `mit_access` (Merchant Initiated Transaction).
+      operationId: gatewayMitInitiate
+      tags: [AccessRules]
+      responses:
+        '200':
+          description: MIT initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessRuleStatus'
+        '401':
+          $ref: '#/components/responses/401Error'
+        '403':
+          $ref: '#/components/responses/403Error'
+      security:
+        - oauth2:
+            - payments_initiate
+          mutualTLS: []
+
+  /gateway/pift/schedule:
+    post:
+      summary: PIFT access-rule probe
+      description: Returns 200 only if the calling TPP has been granted `pift_access`.
+      operationId: gatewayPiftSchedule
+      tags: [AccessRules]
+      responses:
+        '200':
+          description: PIFT scheduled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessRuleStatus'
+        '401':
+          $ref: '#/components/responses/401Error'
+        '403':
+          $ref: '#/components/responses/403Error'
+      security:
+        - oauth2:
+            - payments_initiate
+          mutualTLS: []
+
+  /gateway/past/statements:
+    get:
+      summary: PAST access-rule probe
+      description: Returns 200 only if the calling TPP has been granted `past_access`.
+      operationId: gatewayPastStatements
+      tags: [AccessRules]
+      responses:
+        '200':
+          description: PAST statements retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessRuleStatus'
+        '401':
+          $ref: '#/components/responses/401Error'
+        '403':
+          $ref: '#/components/responses/403Error'
+      security:
+        - oauth2:
+            - accounts_read
+          mutualTLS: []
+
+  /past/accounts/{accountId}/statement:
+    get:
+      summary: Get an account statement (PAST)
+      description: |
+        CBN access rule **PAST** (Payment Account Statement Transfer).
+        Requires an approved consent (`X-Consent-ID`) whose `accounts`
+        list includes `accountId` and whose scope includes
+        `accounts_read`, in addition to the TPP-level OAuth2 + mTLS below.
+      operationId: getAccountStatement
+      tags: [Statements]
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/ConsentId'
+        - name: from
+          in: query
+          required: true
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Statement transactions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountStatementResponse'
+        '400':
+          $ref: '#/components/responses/400Error'
+        '401':
+          $ref: '#/components/responses/401Error'
+        '403':
+          $ref: '#/components/responses/403Error'
+      security:
+        - oauth2:
+            - accounts_read
+          mutualTLS: []
 
 components:
   schemas:
@@ -740,12 +1164,12 @@ components:
         SchemeName:
           type: string
           enum:
-            - UK.OBIE.SortCodeAccountNumber
-            - UK.OBIE.IBAN
-            - UK.OBIE.PAN
-            - UK.OBIE.MaskedPAN
-            - UK.OBIE.BBAN
-            - UK.OBIE.Paym
+            - NG.OBN.SortCodeAccountNumber
+            - NG.OBN.IBAN
+            - NG.OBN.PAN
+            - NG.OBN.MaskedPAN
+            - NG.OBN.BBAN
+            - NG.OBN.Paym
           description: Account identification scheme
         Identification:
           type: string
@@ -773,8 +1197,8 @@ components:
         SchemeName:
           type: string
           enum:
-            - UK.OBIE.BICFI
-            - UK.OBIE.BankCode
+            - NG.OBN.BICFI
+            - NG.OBN.BankCode
           description: Servicer identification scheme
         Identification:
           type: string
@@ -1039,7 +1463,7 @@ components:
         SchemeName:
           type: string
           enum:
-            - UK.OBIE.BICFI
+            - NG.OBN.BICFI
         Identification:
           type: string
           example: "MIDLGB22"
@@ -1054,7 +1478,7 @@ components:
         SchemeName:
           type: string
           enum:
-            - UK.OBIE.BICFI
+            - NG.OBN.BICFI
         Identification:
           type: string
           example: "BARCGB22"
@@ -1625,7 +2049,7 @@ components:
           type: string
           format: uri
           description: URI identifying error type
-          example: "https://openbanking.org.uk/errors/insufficient-funds"
+          example: "https://api.openbanking.ng/errors/insufficient-funds"
         title:
           type: string
           description: Short error title
@@ -1646,8 +2070,8 @@ components:
         # Open Banking extensions
         ob_error_code:
           type: string
-          description: UK Open Banking specific error code
-          example: "UK.OBIE.Field.Invalid"
+          description: Open Banking Nigeria specific error code
+          example: "NG.OBN.Field.Invalid"
         ob_error_path:
           type: array
           items:
@@ -1668,6 +2092,269 @@ components:
               rejected_value:
                 type: string
                 example: "10000.00"
+
+    # --- Authorization (OAuth2 + PKCE + consent) ---
+    ConsentRequestBody:
+      type: object
+      required:
+        - consentId
+        - approved
+        - permissions
+        - accounts
+      properties:
+        consentId:
+          type: string
+          format: uuid
+        approved:
+          type: boolean
+        permissions:
+          type: array
+          items:
+            type: string
+            enum: [accounts_read, payments_initiate]
+        accounts:
+          type: array
+          items:
+            type: string
+          description: AccountIds the PSU is approving TPP access to
+
+    ConsentResponse:
+      type: object
+      properties:
+        code:
+          type: [string, "null"]
+          description: Authorization code, only present when approved is true
+
+    ConsentDetails:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        clientName:
+          type: string
+        scope:
+          type: array
+          items:
+            type: string
+        permissions:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+              description:
+                type: string
+              required:
+                type: boolean
+        expiresAt:
+          type: string
+          format: date-time
+        redirectUri:
+          type: string
+          format: uri
+        status:
+          type: string
+          enum: [pending, approved, denied]
+
+    TokenRequestBody:
+      type: object
+      required:
+        - grant_type
+      properties:
+        grant_type:
+          type: string
+          enum: [authorization_code, refresh_token, client_credentials]
+        code:
+          type: string
+          description: Required when grant_type=authorization_code
+        redirect_uri:
+          type: string
+          format: uri
+        client_id:
+          type: string
+        client_secret:
+          type: string
+        code_verifier:
+          type: string
+          description: RFC 7636 PKCE verifier, required when grant_type=authorization_code (S256 only)
+        refresh_token:
+          type: string
+          description: Required when grant_type=refresh_token
+
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          example: "Bearer"
+        expires_in:
+          type: integer
+          example: 3600
+        refresh_token:
+          type: string
+        scope:
+          type: string
+          example: "accounts_read payments_initiate"
+
+    OpenIdConfiguration:
+      type: object
+      properties:
+        issuer:
+          type: string
+          format: uri
+        authorization_endpoint:
+          type: string
+          format: uri
+        token_endpoint:
+          type: string
+          format: uri
+        jwks_uri:
+          type: string
+          format: uri
+        response_types_supported:
+          type: array
+          items:
+            type: string
+        grant_types_supported:
+          type: array
+          items:
+            type: string
+        code_challenge_methods_supported:
+          type: array
+          items:
+            type: string
+          example: ["S256"]
+
+    # --- Payments (PISP) ---
+    ISO20022Payment:
+      type: object
+      description: ISO 20022 pain.001-derived single/future-dated payment instruction
+      required:
+        - messageId
+        - creationDateTime
+        - debtor
+        - creditor
+        - instructedAmount
+        - remittanceInformation
+      properties:
+        messageId:
+          type: string
+        creationDateTime:
+          type: string
+          format: date-time
+        debtor:
+          $ref: '#/components/schemas/PaymentParty'
+        creditor:
+          $ref: '#/components/schemas/PaymentParty'
+        instructedAmount:
+          $ref: '#/components/schemas/PaymentAmount'
+        remittanceInformation:
+          type: string
+
+    PaymentParty:
+      type: object
+      required:
+        - name
+        - account
+      properties:
+        name:
+          type: string
+        account:
+          type: object
+          required:
+            - iban
+            - currency
+          properties:
+            iban:
+              type: string
+            currency:
+              type: string
+
+    PaymentAmount:
+      type: object
+      required:
+        - value
+        - currency
+      properties:
+        value:
+          type: number
+          format: double
+          minimum: 0.01
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+          example: "NGN"
+
+    FuturePaymentRequest:
+      allOf:
+        - $ref: '#/components/schemas/ISO20022Payment'
+        - type: object
+          required:
+            - executionDate
+          properties:
+            executionDate:
+              type: string
+              format: date-time
+              description: Must be in the future (PIFT)
+
+    PaymentInitiationResponse:
+      type: object
+      properties:
+        paymentId:
+          type: string
+        sagaId:
+          type: string
+        status:
+          type: string
+          enum: [processing, scheduled]
+        idempotencyKey:
+          type: string
+        executionDate:
+          type: string
+          format: date-time
+        links:
+          type: object
+          properties:
+            status:
+              type: string
+
+    PaymentStatusResponse:
+      type: object
+      properties:
+        paymentId:
+          type: string
+        status:
+          type: string
+          enum: [processing, completed, failed, reversed]
+        settlementDate:
+          type: string
+          format: date-time
+
+    PaymentReversalResponse:
+      type: object
+      properties:
+        id:
+          type: string
+
+    # --- Access rules (CBN PIST/MIT/PIFT/PAST) ---
+    AccessRuleStatus:
+      type: object
+      properties:
+        message:
+          type: string
+
+    # --- Statements (PAST) ---
+    AccountStatementResponse:
+      type: object
+      properties:
+        transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transaction'
 
   parameters:
     AccountId:
@@ -1711,6 +2398,25 @@ components:
       schema:
         type: string
         maxLength: 500
+
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Unique key per distinct payment request; replaying the same key returns the original result instead of creating a duplicate payment
+      schema:
+        type: string
+        format: uuid
+      example: "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+
+    ConsentId:
+      name: X-Consent-ID
+      in: header
+      required: true
+      description: Approved consent identifier returned from POST /auth/consent, scoping which account(s) this call may access
+      schema:
+        type: string
+        format: uuid
 
     page:
       name: page
@@ -1859,13 +2565,13 @@ components:
       in: query
       required: false
       description: Comma-separated list of account IDs
+      style: form
+      explode: false
       schema:
         type: array
         items:
           type: string
         maxItems: 10
-        style: form
-        explode: false
       example: "1234567890,0987654321"
 
     balance-types:
@@ -1873,6 +2579,8 @@ components:
       in: query
       required: false
       description: Comma-separated list of balance types
+      style: form
+      explode: false
       schema:
         type: array
         items:
@@ -1882,8 +2590,6 @@ components:
             - ClosingBooked
             - InterimAvailable
             - InterimBooked
-        style: form
-        explode: false
 
   headers:
     x-fapi-interaction-id:
@@ -1918,7 +2624,7 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
           example:
-            type: "https://openbanking.org.uk/errors/invalid-request"
+            type: "https://api.openbanking.ng/errors/invalid-request"
             title: "Invalid Request"
             status: 400
             detail: "Request body contains invalid JSON"
@@ -1938,7 +2644,7 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
           example:
-            type: "https://openbanking.org.uk/errors/unauthorised"
+            type: "https://api.openbanking.ng/errors/unauthorised"
             title: "Unauthorized"
             status: 401
             detail: "Access token is missing or invalid"
@@ -1954,7 +2660,7 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
           example:
-            type: "https://openbanking.org.uk/errors/forbidden"
+            type: "https://api.openbanking.ng/errors/forbidden"
             title: "Forbidden"
             status: 403
             detail: "Token does not have required scopes"
@@ -1970,7 +2676,7 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
           example:
-            type: "https://openbanking.org.uk/errors/not-found"
+            type: "https://api.openbanking.ng/errors/not-found"
             title: "Not Found"
             status: 404
             detail: "Account not found"
@@ -2024,7 +2730,7 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
           example:
-            type: "https://openbanking.org.uk/errors/unprocessable-entity"
+            type: "https://api.openbanking.ng/errors/unprocessable-entity"
             title: "Unprocessable Entity"
             status: 422
             detail: "Request failed business validation"
@@ -2033,6 +2739,22 @@ components:
               - field: "fromBookingDate"
                 error: "invalid_date_range"
                 detail: "Date range cannot exceed 90 days"
+
+    409Error:
+      description: Conflict - Idempotency key reused for a different request, or resource already processed
+      headers:
+        x-fapi-interaction-id:
+          $ref: '#/components/headers/x-fapi-interaction-id'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            type: "https://api.openbanking.ng/errors/conflict"
+            title: "Conflict"
+            status: 409
+            detail: "A request with this Idempotency-Key is already processing"
+            instance: "urn:uuid:c7c8b9a0-1a2b-3c4d-5e6f-7a8b9c0d1e2f"
 
     429Error:
       description: Too Many Requests - Rate limit exceeded
@@ -2048,7 +2770,7 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
           example:
-            type: "https://openbanking.org.uk/errors/rate-limit-exceeded"
+            type: "https://api.openbanking.ng/errors/rate-limit-exceeded"
             title: "Rate Limit Exceeded"
             status: 429
             detail: "Too many requests. Please retry after 60 seconds"
@@ -2068,7 +2790,7 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
           example:
-            type: "https://openbanking.org.uk/errors/internal-server-error"
+            type: "https://api.openbanking.ng/errors/internal-server-error"
             title: "Internal Server Error"
             status: 500
             detail: "An unexpected error occurred. Please try again later"
@@ -2077,24 +2799,34 @@ components:
   securitySchemes:
     oauth2:
       type: oauth2
-      description: OAuth2 Authorization Code Flow with PKCE (FAPI compliant)
+      description: |
+        OAuth2 Authorization Code Flow with PKCE (S256 only, FAPI compliant).
+        Access tokens issued under this flow are certificate-bound: they
+        are only valid when presented together with the same TPP client
+        certificate used to obtain them (see `mutualTLS`).
       flows:
         authorizationCode:
-          authorizationUrl: https://auth.bank.com/authorize
-          tokenUrl: https://auth.bank.com/token
-          refreshUrl: https://auth.bank.com/refresh
+          authorizationUrl: https://rs.openbanking.ng/v1/auth/authorize
+          tokenUrl: https://rs.openbanking.ng/v1/auth/token
+          refreshUrl: https://rs.openbanking.ng/v1/auth/token
           scopes:
-            accounts: Access account information
+            accounts_read: Read account, balance, transaction and statement information
+            payments_initiate: Initiate and manage payments
             openid: OpenID Connect scope
             profile: Basic profile information
 
     mutualTLS:
       type: mutualTLS
-      description: Mutual TLS authentication with eIDAS certificates
+      description: |
+        Mutual TLS using the TPP's Open Banking Nigeria Registry-enrolled
+        transport certificate, required on the `matls.` host for every
+        AISP/PISP resource and payment call. Terminated by the mTLS
+        gateway in front of the API (see nginx/mtls-gateway.conf) and
+        verified against the participant's registry record.
 
     openIdConnect:
       type: openIdConnect
-      openIdConnectUrl: https://auth.bank.com/.well-known/openid-configuration
+      openIdConnectUrl: https://rs.openbanking.ng/v1/auth/.well-known/openid-configuration
 
   examples:
     basic-accounts:
@@ -2108,11 +2840,11 @@ components:
               AccountSubType: "CurrentAccount"
               Description: "Mr John Smith Personal Account"
               Account:
-                - SchemeName: "UK.OBIE.SortCodeAccountNumber"
+                - SchemeName: "NG.OBN.SortCodeAccountNumber"
                   Identification: "12345678901234"
                   Name: "Mr John Smith"
         Links:
-          Self: "https://api.bank.com/open-banking/v3.1/aisp/accounts"
+          Self: "https://api.openbanking.ng/open-banking/v3.1/aisp/accounts"
         Meta:
           TotalPages: 1
           TotalRecords: 1
@@ -2129,17 +2861,17 @@ components:
               Description: "Mr John Smith Personal Account"
               Nickname: "Main Account"
               Account:
-                - SchemeName: "UK.OBIE.SortCodeAccountNumber"
+                - SchemeName: "NG.OBN.SortCodeAccountNumber"
                   Identification: "12345678901234"
                   Name: "Mr John Smith"
               Servicer:
-                SchemeName: "UK.OBIE.BICFI"
+                SchemeName: "NG.OBN.BICFI"
                 Identification: "MIDLGB22"
               Status: "Enabled"
               StatusUpdateDateTime: "2026-01-01T00:00:00Z"
               OpeningDate: "2020-01-15"
         Links:
-          Self: "https://api.bank.com/open-banking/v3.1/aisp/accounts"
+          Self: "https://api.openbanking.ng/open-banking/v3.1/aisp/accounts"
         Meta:
           TotalPages: 1
           TotalRecords: 1
@@ -2166,7 +2898,7 @@ components:
                 Code: "PMNT"
                 SubCode: "ICDT"
         Links:
-          Self: "https://api.bank.com/open-banking/v3.1/aisp/accounts/1234567890/transactions?fromBookingDate=2026-03-01"
+          Self: "https://api.openbanking.ng/open-banking/v3.1/aisp/accounts/1234567890/transactions?fromBookingDate=2026-03-01"
         Meta:
           TotalPages: 1
           TotalRecords: 15
@@ -2188,11 +2920,11 @@ components:
               BookingDateTime: "2026-03-09T10:30:00Z"
               TransactionInformation: "TESCO STORE 123 LONDON"
         Links:
-          Self: "https://api.bank.com/open-banking/v3.1/aisp/accounts/1234567890/transactions?page=2&limit=50"
-          First: "https://api.bank.com/open-banking/v3.1/aisp/accounts/1234567890/transactions?page=1&limit=50"
-          Prev: "https://api.bank.com/open-banking/v3.1/aisp/accounts/1234567890/transactions?page=1&limit=50"
-          Next: "https://api.bank.com/open-banking/v3.1/aisp/accounts/1234567890/transactions?page=3&limit=50"
-          Last: "https://api.bank.com/open-banking/v3.1/aisp/accounts/1234567890/transactions?page=5&limit=50"
+          Self: "https://api.openbanking.ng/open-banking/v3.1/aisp/accounts/1234567890/transactions?page=2&limit=50"
+          First: "https://api.openbanking.ng/open-banking/v3.1/aisp/accounts/1234567890/transactions?page=1&limit=50"
+          Prev: "https://api.openbanking.ng/open-banking/v3.1/aisp/accounts/1234567890/transactions?page=1&limit=50"
+          Next: "https://api.openbanking.ng/open-banking/v3.1/aisp/accounts/1234567890/transactions?page=3&limit=50"
+          Last: "https://api.openbanking.ng/open-banking/v3.1/aisp/accounts/1234567890/transactions?page=5&limit=50"
         Meta:
           TotalPages: 5
           TotalRecords: 234
@@ -2200,10 +2932,15 @@ components:
           LastAvailableDateTime: "2026-03-09T23:59:59Z"
 
 security:
+  # A single requirement object ANDs its keys: every AISP/PISP call needs
+  # both a valid OAuth2 access token AND the TPP's client certificate
+  # (mTLS), matching FAPI/CBN's certificate-bound access token model.
+  # Individual public endpoints (e.g. /auth/authorize, /auth/token) override
+  # this with `security: []`.
   - oauth2:
-      - accounts
-  - mutualTLS: []
+      - accounts_read
+    mutualTLS: []
 
 externalDocs:
   description: Full Open Banking Documentation
-  url: https://www.openbanking.org.uk/read-write-apis/
+  url: https://www.openbanking.ng/read-write-apis/
