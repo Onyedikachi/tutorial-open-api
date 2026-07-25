@@ -55,15 +55,15 @@ info:
 
 servers:
   - url: https://rs.openbanking.ng/v1
-    description: Production Server - OAuth2 authorization/token/consent journey (TLS 1.3 required, no client certificate)
+    description: Bank backend - OAuth2 authorization/consent journey only (browser-facing, TLS 1.3, no client certificate)
   - url: https://matls.rs.openbanking.ng/v1
-    description: Production Server - AISP/PISP resource and payment calls (mTLS + OAuth2 required)
+    description: tutorial-open-banking-api-gateway - AISP/PISP resource and payment calls (mTLS + OAuth2 required). Terminates mTLS and enforces product entitlement/rate limiting before proxying to the bank backend.
   - url: https://sandbox.openbanking.ng/v1
     description: Sandbox Environment (mTLS + OAuth2 required, test CA)
   - url: http://localhost:3000
-    description: Local development (OAuth2 journey only, no mTLS)
+    description: Local development - bank backend (browser-facing /auth/* journey only)
   - url: https://localhost:8443
-    description: Local development mTLS gateway - see certs/generate-dev-certs.sh
+    description: Local development - api gateway (mTLS). See tutorial-open-banking-api-gateway/certs/generate-dev-certs.sh
 
 tags:
   - name: Authorization
@@ -764,6 +764,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OpenIdConfiguration'
+
+  /auth/jwks:
+    get:
+      summary: JSON Web Key Set for verifying access token signatures
+      description: |
+        Publishes this bank's RS256 public signing key. Fetched and cached
+        by tutorial-open-banking-api-gateway so it can verify Bearer tokens
+        itself, independent of this backend, on every proxied call.
+      operationId: getJwks
+      tags: [Authorization]
+      security: []
+      responses:
+        '200':
+          description: JWKS document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Jwks'
 
   /payments:
     post:
@@ -2228,6 +2246,22 @@ components:
           items:
             type: string
           example: ["S256"]
+
+    Jwks:
+      type: object
+      properties:
+        keys:
+          type: array
+          items:
+            type: object
+            description: RFC 7517 JSON Web Key
+            properties:
+              kty: { type: string, example: "RSA" }
+              use: { type: string, example: "sig" }
+              alg: { type: string, example: "RS256" }
+              kid: { type: string }
+              n: { type: string }
+              e: { type: string }
 
     # --- Payments (PISP) ---
     ISO20022Payment:
