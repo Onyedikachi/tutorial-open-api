@@ -5,7 +5,6 @@ import { CacheModule } from '@nestjs/cache-manager';
 import * as redisStore from 'cache-manager-redis-store';
 
 import { AuthModule } from './modules/auth/auth.module';
-import { GatewayModule } from './modules/gateway/gateway.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { RegistryModule } from './modules/registry/registry.module';
 import { SecurityModule } from './modules/security/security.module';
@@ -49,7 +48,6 @@ import { AccountsModule } from './modules/accounts/accounts.module';
       inject: [ConfigService],
     }),
     AuthModule,
-    GatewayModule,
     PaymentsModule,
     RegistryModule,
     SecurityModule,
