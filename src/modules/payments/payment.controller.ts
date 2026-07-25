@@ -47,6 +47,7 @@ export class PaymentController {
   ) {}
 
   @Post()
+  @UseGuards(PISTGuard)
   @Idempotent()
   async initiatePayment(
     @Body() paymentDTO: ISO20022PaymentDTO,
@@ -152,7 +153,7 @@ export class PaymentController {
   }
 
   @Post('pift/schedule')
-  // @UseGuards(PIFTGuard)
+  @UseGuards(PIFTGuard)
   @Idempotent()
   async scheduleFuturePayment(
     @Body() paymentDTO: ISO20022PaymentDTO & { executionDate: Date },
