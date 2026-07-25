@@ -1,18 +1,19 @@
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
-import { MTLSModule } from './mtls/mtls.module';
-import { MTLSMiddleware } from './mtls/mtls.middleware';
+import { GatewayTrustModule } from './gateway-trust/gateway-trust.module';
+import { GatewayTrustMiddleware } from './gateway-trust/gateway-trust.middleware';
 
 @Module({
-  imports: [MTLSModule],
+  imports: [GatewayTrustModule],
 })
 export class SecurityModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     // TPP-to-ASPSP resource/payment calls (AISP + PISP) must arrive through
-    // the mTLS gateway (nginx/mtls-gateway.conf). The user-facing OAuth2
-    // authorize/token/consent journey (/auth/*) is intentionally excluded -
-    // it's the browser-facing leg a TPP's own frontend drives directly.
+    // tutorial-open-banking-api-gateway - this backend is not published
+    // publicly for these routes. The user-facing OAuth2 authorize/consent
+    // journey (/auth/*) is intentionally excluded - it's the browser-facing
+    // leg the PSU's browser drives directly against this backend.
     consumer
-      .apply(MTLSMiddleware)
-      .forRoutes('payments', 'payments/*path', 'gateway', 'gateway/*path', 'past/*path');
+      .apply(GatewayTrustMiddleware)
+      .forRoutes('payments', 'payments/*path', 'past/*path');
   }
 }
