@@ -26,5 +26,20 @@ services:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
 
+  # mTLS gateway (matls.*) in front of the API - run
+  # certs/generate-dev-certs.sh once before starting this service.
+  # The API itself keeps running on the host via `npm run start:dev` and
+  # stays reachable directly on :3000 for the browser-based demo frontend,
+  # which never presents a client certificate. See nginx/mtls-gateway.conf.
+  mtls-gateway:
+    image: nginx:1.27-alpine
+    ports:
+      - "8443:8443"
+    volumes:
+      - ./nginx/mtls-gateway.conf:/etc/nginx/conf.d/mtls-gateway.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
 volumes:
   postgres_data:
