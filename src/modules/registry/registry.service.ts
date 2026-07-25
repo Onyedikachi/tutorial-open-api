@@ -10,9 +10,11 @@ interface Participant {
   clientId: string;
   name: string;
   certificates: Certificate[];
-  // CBN Open Banking Nigeria access-rule categories this TPP has been
-  // approved for (PIST/PIFT/MIT/PAST), mirrors the guards in
-  // src/modules/gateway/guards.
+  // CBN Open Banking Nigeria access-rule categories ("products" in API
+  // gateway terms) this TPP has been approved for (PIST/PIFT/MIT/PAST).
+  // Enforced by tutorial-open-banking-api-gateway, which calls
+  // GET /internal/registry/participants/:clientId (registry.controller.ts)
+  // to resolve this before proxying a request.
   accessRules: string[];
 }
 
@@ -37,9 +39,9 @@ export class RegistryService implements OnModuleInit {
   private loadMockParticipants() {
     // certificates are left empty here: in production these are enrolled
     // via syncParticipants() from the live Open Banking Registry directory.
-    // For local dev, generate matching client certs with
-    // certs/generate-dev-certs.sh (CN=bank-a / CN=fintech-x) - the CN is
-    // what MTLSMiddleware uses to look up the participant.
+    // For local dev, client certs are minted by
+    // tutorial-open-banking-api-gateway/certs/generate-dev-certs.sh - the
+    // cert's CN must match a clientId here for the gateway to admit it.
     const mockParticipants: Participant[] = [
       {
         clientId: 'bank-a',
@@ -52,6 +54,13 @@ export class RegistryService implements OnModuleInit {
         name: 'Fintech X',
         certificates: [],
         accessRules: ['accounts_read', 'pist_access'],
+      },
+      {
+        // The demo TPP behind tutorial-open-banking-client-backend.
+        clientId: 'acme-fintech',
+        name: 'Acme Fintech',
+        certificates: [],
+        accessRules: ['accounts_read', 'pist_access', 'pift_access', 'past_access'],
       },
     ];
 
@@ -91,9 +100,10 @@ export class RegistryService implements OnModuleInit {
   // them in the registry. Enrollment is best-effort: a participant with
   // no enrolled certificates yet is treated as identified-but-unpinned
   // (their mTLS client cert's CN was already verified against the trusted
-  // CA by the gateway) rather than rejected, since certificate rotation
-  // in a real Open Banking directory lags issuance. Callers that need
-  // strict pinning should check `certificates.length > 0` themselves.
+  // CA by tutorial-open-banking-api-gateway) rather than rejected, since
+  // certificate rotation in a real Open Banking directory lags issuance.
+  // Callers that need strict pinning should check
+  // `certificates.length > 0` themselves.
   validateParticipant(clientId: string, certificate: Certificate): boolean {
     const participant = this.getParticipant(clientId);
 
