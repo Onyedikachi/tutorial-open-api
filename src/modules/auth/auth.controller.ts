@@ -24,14 +24,13 @@ export class AuthController {
   ) {}
 
   @Post('consent')
-  async handleConsent(@Body() consentDTO: ConsentDTO, @Req() req: Request) {
-    // const userId = req.session?.user?.id ?? '0000'; // or req.user if using Passport JWT
+  async handleConsent(@Body() consentDTO: ConsentDTO) {
     const code = await this.consentService.processConsent(
       consentDTO.consentId,
       consentDTO.approved,
       consentDTO.permissions,
       consentDTO.accounts,
-      'test'
+      consentDTO.userId ?? 'anonymous-psu',
     );
     return { code };
   }
@@ -85,10 +84,13 @@ export class AuthController {
       });
     }
 
-    // Create consent request with PKCE data
+    // Create consent request with PKCE data. scope is a space-delimited
+    // string per RFC 6749 - split it before it hits a string[] column,
+    // otherwise "accounts_read payments_initiate" gets stored (and later
+    // approved/checked) as a single, meaningless compound scope.
     const consentRequest = await this.consentService.createConsentRequest({
       clientId: client_id,
-      scope,
+      scope: typeof scope === 'string' ? scope.split(' ').filter(Boolean) : [],
       redirectUri: redirect_uri,
       codeChallenge: code_challenge,
       codeChallengeMethod: code_challenge_method || 'S256',
@@ -96,7 +98,11 @@ export class AuthController {
       state,
     });
 
-    return res.redirect(`${redirect_uri}/consent/${consentRequest.id}`);
+    // Bank-hosted: the PSU authenticates and approves consent directly on
+    // this backend's own UI, never on the TPP's frontend/domain (a TPP
+    // hosting its bank's login/consent capture would be a serious
+    // compliance issue in a real Open Banking deployment).
+    return res.redirect(`/auth/ui/login/${consentRequest.id}`);
   }
 
   @Post('token')

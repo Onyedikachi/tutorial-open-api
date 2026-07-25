@@ -1,4 +1,4 @@
-import { IsBoolean, IsArray, IsString, IsUUID } from 'class-validator';
+import { IsBoolean, IsArray, IsString, IsUUID, IsOptional } from 'class-validator';
 
 export class ConsentDTO {
   @IsUUID()
@@ -13,5 +13,13 @@ export class ConsentDTO {
 
   @IsArray()
   @IsString({ each: true })
-  accounts: string[]; 
+  accounts: string[];
+
+  // The authenticated PSU (bank customer) approving this consent, from the
+  // bank-hosted mock login step (see consent-ui.controller.ts). Real bank
+  // deployments would derive this from the PSU's actual authenticated
+  // session, not a client-supplied field.
+  @IsOptional()
+  @IsString()
+  userId?: string;
 }
