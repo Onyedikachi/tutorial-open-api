@@ -8,8 +8,8 @@ import {
   UseInterceptors,
   Req,
   ConflictException,
+  ForbiddenException,
   Inject,
-  UseGuards,
 } from '@nestjs/common';
 
 import { PaymentService } from './payment.service';
@@ -21,8 +21,6 @@ import { ISO20022PaymentDTO } from './dto/iso20022-payment.dto';
 import { ProblemDetailsException } from '../../common/exceptions/problem-details.exception';
 import { EventProducer, EventType } from '../events/producers/event.producer';
 
-import { PISTGuard } from '../gateway/guards/pist.guard';
-import { PIFTGuard } from '../gateway/guards/pift.guard';
 import { IdempotentPaymentService } from './idempotent-payment.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IdempotentRequest } from './entities/idempotent-request.entity';
@@ -47,13 +45,19 @@ export class PaymentController {
   ) {}
 
   @Post()
-  @UseGuards(PISTGuard)
   @Idempotent()
   async initiatePayment(
     @Body() paymentDTO: ISO20022PaymentDTO,
     @Headers('idempotency-key') idempotencyKey: string,
     @Req() req,
   ) {
+    // Primary enforcement (product entitlement, mTLS, rate limiting) happens
+    // at the API gateway before this request ever arrives here. This is
+    // defense-in-depth on the identity GatewayTrustMiddleware already
+    // verified and attached to req.client from the gateway's forwarded
+    // headers - it does not re-derive trust on its own.
+    this.requireAccessRule(req, 'pist_access');
+
     if (!idempotencyKey) {
       throw new ConflictException('Missing idempotency key');
     }
@@ -153,13 +157,25 @@ export class PaymentController {
   }
 
   @Post('pift/schedule')
-  @UseGuards(PIFTGuard)
   @Idempotent()
   async scheduleFuturePayment(
     @Body() paymentDTO: ISO20022PaymentDTO & { executionDate: Date },
     @Headers('idempotency-key') idempotencyKey: string,
+    @Req() req,
   ) {
-    // PIFT requires encrypted JWT (enforced by middleware)
+    this.requireAccessRule(req, 'pift_access');
+
+    const executionDate = new Date(paymentDTO.executionDate);
+    if (isNaN(executionDate.getTime()) || executionDate <= new Date()) {
+      throw new ProblemDetailsException({
+        type: 'https://api.openbanking.ng/errors/invalid-execution-date',
+        title: 'Invalid Execution Date',
+        status: 422,
+        detail: 'executionDate must be a valid future date',
+        instance: req.path,
+      });
+    }
+
     const paymentId = `pift_${Date.now()}`;
 
     const sagaId = await this.paymentSaga.initiatePayment({
@@ -181,5 +197,12 @@ export class PaymentController {
       executionDate: paymentDTO.executionDate,
       idempotencyKey,
     };
+  }
+
+  private requireAccessRule(req, rule: string): void {
+    const accessRules: string[] | undefined = req.client?.accessRules;
+    if (!accessRules?.includes(rule)) {
+      throw new ForbiddenException(`'${rule}' access rule not granted for this TPP`);
+    }
   }
 }

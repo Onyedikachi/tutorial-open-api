@@ -11,7 +11,6 @@ import { PaymentSaga } from '../saga/sagas/payment.saga';
 import { SagaModule } from '../saga/saga.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import { RedisProvider } from '../../common/providers/redis.provider';
-import { GatewayModule } from '../gateway/gateway.module';
 
 @Module({
   imports: [
@@ -33,7 +32,6 @@ import { GatewayModule } from '../gateway/gateway.module';
       isGlobal: false,
     }),
     SagaModule,
-    GatewayModule,
   ],
   controllers: [PaymentController],
   providers: [PaymentService, IdempotentPaymentService, EventProducer, PaymentEventProducer, RedisProvider],
