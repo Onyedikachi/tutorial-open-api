@@ -6,6 +6,7 @@ import { randomBytes } from 'crypto';
 
 import { AuthorizationCode } from './entities/authorization-code.entity';
 import { ConsentRequest } from './entities/consent-request.entity';
+import { RefreshToken } from './entities/refresh-token.entity';
 import { ConsentService } from './services/consent.service';
 import { ConfigService } from '@nestjs/config';
 import { PKCEService } from './services/pkce.service';
@@ -17,6 +18,8 @@ export class AuthService {
     private authCodeRepository: Repository<AuthorizationCode>,
     @InjectRepository(ConsentRequest)
     private consentRepository: Repository<ConsentRequest>,
+    @InjectRepository(RefreshToken)
+    private refreshTokenRepository: Repository<RefreshToken>,
     private jwtService: JwtService,
     private pkceService: PKCEService,
     private consentService: ConsentService,
@@ -108,16 +111,14 @@ export class AuthService {
     // Validate client secret if it's a confidential client (simplified)
     // In production, check against registry
 
-    // PKCE verification
-    // if (authCode.codeChallenge) {
-    //   if (!codeVerifier) {
-    //     throw new UnauthorizedException('PKCE code verifier required');
-    //   }
-    //   const isValid = await this.pkceService.verifyCodeVerifier(code, codeVerifier);
-    //   if (!isValid) {
-    //     throw new UnauthorizedException('PKCE verification failed');
-    //   }
-    // }
+    // PKCE verification (RFC 7636) - required whenever the authorize
+    // request registered a code_challenge.
+    if (authCode.codeChallenge) {
+      if (!codeVerifier) {
+        throw new UnauthorizedException('PKCE code verifier required');
+      }
+      await this.pkceService.verifyCodeVerifier(code, codeVerifier);
+    }
 
     // Mark code as used
     authCode.used = true;
@@ -134,10 +135,7 @@ export class AuthService {
       expiresIn: this.configService.get('JWT_EXPIRY', '1h'),
     });
 
-    const refreshToken = randomBytes(32).toString('hex');
-
-    // Store refresh token (in production, save to database)
-    // For now, just return
+    const refreshToken = await this.issueRefreshToken(authCode.clientId, authCode.userId, authCode.scope);
 
     return {
       access_token: accessToken,
@@ -149,21 +147,56 @@ export class AuthService {
   }
 
   /**
-   * Refresh access token.
+   * Refresh access token. Validates and rotates the refresh token.
    */
   async refreshToken(refreshToken: string): Promise<any> {
-    // Validate refresh token from database
-    // For now, just generate a new access token
-    const payload = { sub: 'user', client_id: 'client' };
+    const stored = await this.refreshTokenRepository.findOne({
+      where: { token: refreshToken },
+    });
+
+    if (!stored || stored.revoked) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    if (stored.expiresAt < new Date()) {
+      throw new UnauthorizedException('Refresh token expired');
+    }
+
+    stored.revoked = true;
+    await this.refreshTokenRepository.save(stored);
+
+    const payload = {
+      sub: stored.userId || 'anonymous',
+      client_id: stored.clientId,
+      scope: stored.scope,
+    };
     const accessToken = this.jwtService.sign(payload, {
       expiresIn: this.configService.get('JWT_EXPIRY', '1h'),
     });
+
+    const newRefreshToken = await this.issueRefreshToken(stored.clientId, stored.userId, stored.scope);
 
     return {
       access_token: accessToken,
       token_type: 'Bearer',
       expires_in: 3600,
+      refresh_token: newRefreshToken,
+      scope: stored.scope.join(' '),
     };
+  }
+
+  private async issueRefreshToken(clientId: string, userId: string, scope: string[]): Promise<string> {
+    const token = randomBytes(32).toString('hex');
+    await this.refreshTokenRepository.save(
+      this.refreshTokenRepository.create({
+        token,
+        clientId,
+        userId,
+        scope,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+      }),
+    );
+    return token;
   }
 
   /**

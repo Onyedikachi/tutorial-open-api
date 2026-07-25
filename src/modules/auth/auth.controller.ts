@@ -14,7 +14,6 @@ import { ConsentService } from './services/consent.service';
 import { ConsentDTO } from './dto/consent.dto';
 import { TokenRequestDTO } from './dto/token-request.dto';
 import { AuthService } from './auth.service';
-import { PKCEService } from './services/pkce.service';
 import { ProblemDetailsException } from '../../common/exceptions/problem-details.exception';
 
 @Controller('auth')
@@ -22,7 +21,6 @@ export class AuthController {
   constructor(
     private authService: AuthService,
     private consentService: ConsentService,
-    private pkceService: PKCEService,
   ) {}
 
   @Post('consent')
@@ -98,7 +96,7 @@ export class AuthController {
       state,
     });
 
-    return res.redirect(`${redirect_uri}/consent/${consentRequest.id}   `);
+    return res.redirect(`${redirect_uri}/consent/${consentRequest.id}`);
   }
 
   @Post('token')
@@ -114,12 +112,6 @@ export class AuthController {
 
     switch (grant_type) {
       case 'authorization_code':
-        // Verify PKCE code verifier
-        // await this.pkceService.verifyCodeVerifier(
-        //   code ?? '',
-        //   code_verifier ?? '',
-        // );
-
         return this.authService.exchangeCodeForToken(
           code ?? '',
           client_id ?? '',

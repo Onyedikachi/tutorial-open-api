@@ -9,6 +9,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthorizationCode } from './entities/authorization-code.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConsentRequest } from './entities/consent-request.entity';
+import { RefreshToken } from './entities/refresh-token.entity';
 import { PKCEService } from './services/pkce.service';
 import { RegistryService } from '../registry/registry.service';
 import { HttpModule, HttpService } from '@nestjs/axios';
@@ -29,7 +30,7 @@ import { HttpModule, HttpService } from '@nestjs/axios';
       inject: [ConfigService],
     }),
     HttpModule.register({ timeout: 10000 }),
-    TypeOrmModule.forFeature([AuthorizationCode, ConsentRequest]),
+    TypeOrmModule.forFeature([AuthorizationCode, ConsentRequest, RefreshToken]),
   ],
   controllers: [AuthController],
   providers: [

@@ -9,8 +9,8 @@ export class MISTGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const client = request.client;
 
-    if (!client || !client.accessRules?.includes('mist_access')) {
-      throw new ForbiddenException('MIST access not granted');
+    if (!client || !client.accessRules?.includes('mit_access')) {
+      throw new ForbiddenException('MIT access not granted');
     }
     return true;
   }
